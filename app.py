@@ -114,29 +114,35 @@ def index():
 
         # 2. Logika Query Utama & Smart Search dengan RapidFuzz + Pecah Kata
         if query:
-            # Ambil semua data untuk disaring menggunakan logika pintar Python (Sinonim + Typo + Pecah Kata)
+            # Ambil semua data untuk disaring dengan RapidFuzz yang lebih spesifik
             cursor.execute("SELECT * FROM artikel_kesehatan")
             all_articles = cursor.fetchall()
             
             search_keywords = get_synonyms_and_keywords(query)
-            words = query.split()
             filtered_articles = []
 
             for art in all_articles:
-                text_content = f"{art['title']} {art['summary']}".lower()
+                title_text = art['title'] or ""
+                summary_text = art['summary'] or ""
+                full_text = f"{title_text} {summary_text}".lower()
                 
-                # A. Cek kecocokan berdasarkan Kamus Sinonim & Keyword
-                match_keyword = any(kw in text_content for kw in search_keywords)
+                # 1. Cek kecocokan kamus sinonim/keyword dasar
+                match_keyword = any(kw in full_text for kw in search_keywords)
                 
-                # B. Pecah Kata Fleksibel: Apakah seluruh kata terketik ada di artikel
-                match_all_words = all(w.lower() in text_content for w in words)
+                # 2. Gunakan WRatio untuk mendeteksi typo & kemiripan frasa secara presisi
+                # Kita cek ke judul (diberi bobot lebih tinggi) dan summary
+                title_score = fuzz.WRatio(query.lower(), title_text.lower())
+                summary_score = fuzz.WRatio(query.lower(), summary_text.lower())
+                max_score = max(title_score, summary_score)
                 
-                # C. Fuzzy Matching (Toleransi Typo menggunakan RapidFuzz, ambang batas kemiripan > 60%)
-                fuzzy_score = fuzz.partial_ratio(query.lower(), text_content)
-                
-                if match_keyword or match_all_words or fuzzy_score > 60:
+                # Hanya ambil jika ada keyword yang cocok ATAU skor kemiripan >= 75 (ketat & spesifik)
+                if match_keyword or max_score >= 80:
+                    # Simpan skor kemiripan pada objek artikel untuk keperluan sorting
+                    art['search_score'] = max_score
                     filtered_articles.append(art)
             
+            # URUTKAN BERDASARKAN SKOR TERTINGGI: Yang paling mirip dengan ketikan user ditaruh di paling atas!
+            filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
             # Query standar jika tidak sedang mencari (berdasarkan kategori & sorting)
