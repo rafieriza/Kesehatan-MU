@@ -62,7 +62,7 @@
         <div class="max-w-4xl mx-auto">
             <h1 class="text-3xl md:text-4xl font-extrabold mb-2">Sistem Aggregator Isu Kesehatan Terkini</h1>
             <p class="text-teal-100 text-sm md:text-base font-light">
-                Aplikasi Kesehatan Jangka Panjang Otomatis Melalui Web Scraping
+                Aplikasi Kesehatan Jangka Panjang Otomatis Melalui RSS & Web Scraping
             </p>
         </div>
     </section>
@@ -94,29 +94,38 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
                         {% for article in articles %}
                             <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col justify-between hover:shadow-lg transition">
-                                <!-- PERFORMA: Lazy Loading Gambar -->
-                                <div class="h-40 bg-teal-50 flex items-center justify-center overflow-hidden border-b border-gray-100">
+                                <!-- PERFORMA: Lazy Loading Gambar & Badge Sumber Transparan -->
+                                <div class="h-40 bg-teal-50 flex items-center justify-center overflow-hidden border-b border-gray-100 relative">
                                     {% if article.image_url %}
                                         <img src="{{ article.image_url }}" alt="{{ article.title }}" loading="lazy" class="w-full h-full object-cover">
                                     {% else %}
                                         <i class="fa-solid fa-newspaper text-4xl text-teal-300"></i>
                                     {% endif %}
+                                    <span class="absolute top-2 left-2 bg-teal-900/80 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow">
+                                        {{ article.source }}
+                                    </span>
                                 </div>
                                 
                                 <div class="p-4 flex-grow flex flex-col justify-between">
                                     <div>
+                                        <!-- Judul Berita -->
                                         <h3 class="font-bold text-gray-900 text-sm mb-2 line-clamp-2 hover:text-teal-700">
-                                            {{ article.title }}
+                                            <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">
+                                                {{ article.title }}
+                                            </a>
                                         </h3>
-                                        <p class="text-gray-600 text-xs mb-3 line-clamp-3">
-                                            {{ article.summary if article.summary else 'Klik tombol di bawah untuk membaca artikel selengkapnya langsung dari portal sumber.' }}
-                                        </p>
+                                        
+                                        <!-- KONDISIONAL SUMMARY: Tampil jika ada isinya, skip bersih jika kosong -->
+                                        {% if article.summary and article.summary.strip() != "" %}
+                                            <p class="text-gray-600 text-xs mb-3 line-clamp-2">
+                                                {{ article.summary }}
+                                            </p>
+                                        {% endif %}
                                     </div>
 
                                     <div>
-                                        <!-- UX: Transparansi Sumber & Hak Cipta -->
-                                        <div class="text-[11px] text-gray-500 mb-3 space-y-0.5">
-                                            <p><span class="font-semibold text-gray-700">Source Portal:</span> <span class="bg-teal-50 text-teal-800 px-1.5 py-0.5 rounded border border-teal-200">{{ article.source }}</span></p>
+                                        <!-- UX: Transparansi Tanggal Terbit -->
+                                        <div class="text-[11px] text-gray-500 mb-3 space-y-0.5 pt-2 border-t border-gray-100">
                                             <p><span class="font-semibold text-gray-700">Published Date:</span> {{ article.published_at.strftime('%d %b %Y') if article.published_at else 'Terbaru' }}</p>
                                         </div>
                                         
