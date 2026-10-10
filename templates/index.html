@@ -16,7 +16,7 @@
 </head>
 <body class="bg-gray-100 font-sans text-gray-800 min-h-screen flex flex-col justify-between">
 
-    <!-- 1. NAVBAR -->
+    <!-- 1. NAVBAR HEADER -->
     <header class="bg-teal-900 text-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
             
@@ -26,18 +26,18 @@
                 <span>Kesehatan<span class="text-teal-300">-MU</span></span>
             </a>
 
-            <!-- Menu Navigation -->
+            <!-- Navigasi Menu -->
             <nav class="hidden md:flex space-x-1 font-medium text-sm">
-                <a href="/" class="px-3 py-2 rounded {% if not active_category and sort_by != 'trending' %}bg-teal-800 text-white font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Home</a>
-                <a href="/?sort=latest" class="px-3 py-2 rounded {% if sort_by == 'latest' and not active_category %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Isu Terbaru</a>
+                <a href="/" class="px-3 py-2 rounded {% if not active_category and sort_by != 'trending' and not search_query %}bg-teal-800 text-white font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Home</a>
+                <a href="/?sort=latest" class="px-3 py-2 rounded {% if sort_by == 'latest' and not active_category and not search_query %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Isu Terbaru</a>
                 <a href="#kategori" class="px-3 py-2 rounded hover:bg-teal-800 transition">Kategori</a>
                 <a href="/?sort=trending" class="px-3 py-2 rounded {% if sort_by == 'trending' %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Trending</a>
             </nav>
 
-            <!-- Search Bar -->
+            <!-- Smart Search Bar -->
             <form action="/" method="GET" class="flex items-center w-full md:w-auto">
-                <input type="text" name="q" value="{{ search_query }}" placeholder="Cari Isu Kesehatan..." 
-                       class="px-3 py-1.5 rounded-l text-gray-800 text-sm focus:outline-none w-full md:w-56 bg-white border border-gray-300">
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Cari Isu (misal: diabetes, flu)..." 
+                       class="px-3 py-1.5 rounded-l text-gray-800 text-sm focus:outline-none w-full md:w-60 bg-white border border-gray-300">
                 <button type="submit" class="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1.5 rounded-r transition">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
@@ -55,15 +55,17 @@
         </div>
     </section>
 
-    <!-- 3. MAIN CONTENT LAYOUT (2 KOLOM) -->
+    <!-- 3. MAIN CONTENT (2 KOLOM LAYOUT) -->
     <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
-            <!-- KOLOM KIRI (3/4): Berita Utama -->
+            <!-- KOLOM KIRI (3/4): Grid Kartu Berita -->
             <div class="lg:col-span-3">
                 <div class="flex items-center justify-between mb-6 border-b pb-2 border-gray-200">
                     <h2 class="text-xl md:text-2xl font-bold text-gray-800">
-                        {% if active_category %}
+                        {% if search_query %}
+                            Hasil Pencarian: <span class="text-teal-700">"{{ search_query }}"</span>
+                        {% elif active_category %}
                             Kategori: <span class="text-teal-700 capitalize">{{ active_category.replace('_', ' ') }}</span>
                         {% elif sort_by == 'trending' %}
                             Isu Kesehatan Trending
@@ -72,7 +74,7 @@
                         {% endif %}
                     </h2>
                     {% if search_query or active_category or sort_by == 'trending' %}
-                        <a href="/" class="text-xs text-teal-600 hover:underline">Tampilkan Semua</a>
+                        <a href="/" class="text-xs text-teal-600 hover:underline font-semibold">Tampilkan Semua</a>
                     {% endif %}
                 </div>
 
@@ -80,9 +82,10 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
                         {% for article in articles %}
                             <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col justify-between hover:shadow-lg transition">
+                                <!-- PERFORMA: Lazy Loading Gambar -->
                                 <div class="h-40 bg-teal-50 flex items-center justify-center overflow-hidden border-b border-gray-100">
                                     {% if article.image_url %}
-                                        <img src="{{ article.image_url }}" alt="{{ article.title }}" class="w-full h-full object-cover">
+                                        <img src="{{ article.image_url }}" alt="{{ article.title }}" loading="lazy" class="w-full h-full object-cover">
                                     {% else %}
                                         <i class="fa-solid fa-newspaper text-4xl text-teal-300"></i>
                                     {% endif %}
@@ -94,18 +97,21 @@
                                             {{ article.title }}
                                         </h3>
                                         <p class="text-gray-600 text-xs mb-3 line-clamp-3">
-                                            {{ article.summary if article.summary else 'Baca artikel selengkapnya langsung dari portal sumber.' }}
+                                            {{ article.summary if article.summary else 'Klik tombol di bawah untuk membaca artikel selengkapnya langsung dari portal sumber.' }}
                                         </p>
                                     </div>
 
                                     <div>
+                                        <!-- UX: Transparansi Sumber & Hak Cipta -->
                                         <div class="text-[11px] text-gray-500 mb-3 space-y-0.5">
-                                            <p><span class="font-semibold text-gray-700">Source Portal:</span> {{ article.source }}</p>
+                                            <p><span class="font-semibold text-gray-700">Source Portal:</span> <span class="bg-teal-50 text-teal-800 px-1.5 py-0.5 rounded border border-teal-200">{{ article.source }}</span></p>
                                             <p><span class="font-semibold text-gray-700">Published Date:</span> {{ article.published_at.strftime('%d %b %Y') if article.published_at else 'Terbaru' }}</p>
                                         </div>
+                                        
+                                        <!-- REDIREKSI: Pihak Ketiga -->
                                         <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
                                            class="block text-center bg-teal-600 hover:bg-teal-700 text-white font-medium text-xs py-2 px-3 rounded transition shadow-sm">
-                                            Baca Selengkapnya
+                                            Baca Selengkapnya <i class="fa-solid fa-arrow-up-right-from-square text-[10px] ml-1"></i>
                                         </a>
                                     </div>
                                 </div>
@@ -113,13 +119,26 @@
                         {% endfor %}
                     </div>
                 {% else %}
-                    <!-- Empty State / Belum Ada Data -->
-                    <div class="bg-white rounded-lg p-12 text-center shadow-sm border border-gray-200">
-                        <i class="fa-solid fa-database text-4xl text-teal-600 mb-4"></i>
-                        <h3 class="text-lg font-semibold text-gray-700 mb-1">Database Masih Kosong</h3>
-                        <p class="text-sm text-gray-500 max-w-md mx-auto">
-                            Belum ada artikel di database. Silakan jalankan skrip `scraper.py` untuk mulai mengisi data.
-                        </p>
+                    <!-- UX: Halaman Empty State Pintar & Ramah Saat Pencarian Kosong -->
+                    <div class="bg-white rounded-lg p-8 text-center shadow-sm border border-gray-200">
+                        <i class="fa-solid fa-circle-exclamation text-4xl text-teal-600 mb-3"></i>
+                        {% if search_query %}
+                            <h3 class="text-lg font-semibold text-gray-800 mb-1">Artikel tentang "{{ search_query }}" tidak ditemukan</h3>
+                            <p class="text-sm text-gray-500 max-w-md mx-auto mb-4">
+                                Coba periksa ejaan kata kunci kamu, atau coba cari topik kesehatan populer berikut:
+                            </p>
+                            <div class="flex flex-wrap justify-center gap-2">
+                                <a href="/?q=vaksin" class="bg-teal-50 text-teal-700 border border-teal-200 text-xs px-3 py-1 rounded-full hover:bg-teal-100">Vaksin</a>
+                                <a href="/?q=diabetes" class="bg-teal-50 text-teal-700 border border-teal-200 text-xs px-3 py-1 rounded-full hover:bg-teal-100">Diabetes</a>
+                                <a href="/?q=dbd" class="bg-teal-50 text-teal-700 border border-teal-200 text-xs px-3 py-1 rounded-full hover:bg-teal-100">DBD</a>
+                                <a href="/?q=mental" class="bg-teal-50 text-teal-700 border border-teal-200 text-xs px-3 py-1 rounded-full hover:bg-teal-100">Kesehatan Mental</a>
+                            </div>
+                        {% else %}
+                            <h3 class="text-lg font-semibold text-gray-800 mb-1">Database Belum Terisi Data</h3>
+                            <p class="text-sm text-gray-500 max-w-md mx-auto">
+                                Aplikasi siap beroperasi! Silakan jalankan file `scraper.py` untuk mulai menarik dan mengisi berita ke database Aiven MySQL.
+                            </p>
+                        {% endif %}
                     </div>
                 {% endif %}
             </div>
@@ -146,7 +165,7 @@
                             {% for item in trending_articles %}
                                 <li class="flex items-start space-x-3">
                                     <span class="text-teal-600 font-extrabold text-lg leading-none">{{ loop.index }}</span>
-                                    <a href="{{ item.url }}" target="_blank" class="text-gray-700 hover:text-teal-700 text-xs font-semibold hover:underline line-clamp-2">
+                                    <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="text-gray-700 hover:text-teal-700 text-xs font-semibold hover:underline line-clamp-2">
                                         {{ item.title }}
                                     </a>
                                 </li>
@@ -163,8 +182,13 @@
 
     <!-- 4. FOOTER -->
     <footer class="bg-slate-900 text-gray-400 py-4 px-4 text-center text-xs mt-auto">
-        <p>&copy; 2026 Kesehatan-MU. Seluruh konten hak cipta portal berita asli.</p>
-        <p class="text-[11px] text-gray-500 mt-0.5">Dikembangkan untuk akses berita kesehatan cepat, gratis, dan terpercaya.</p>
+        <p>&copy; 2026 Kesehatan-MU. Developed by 
+            <a href="https://instagram.com/rafieriza_" target="_blank" rel="noopener noreferrer" class="text-teal-400 hover:text-teal-300 font-semibold hover:underline">
+                @rafieriza <i class="fa-brands fa-instagram text-xs ml-0.5"></i>
+            </a>. 
+            Seluruh hak cipta konten milik portal sumber asli.
+        </p>
+        <p class="text-[11px] text-gray-500 mt-0.5">Dikembangkan sebagai sistem aggregator isu kesehatan otomatis.</p>
     </footer>
 
 </body>
