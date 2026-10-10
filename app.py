@@ -4,9 +4,6 @@ from flask import Flask, request, render_template
 import mysql.connector
 from dotenv import load_dotenv
 
-# Import fungsi scraper yang sudah lu buat
-from scraper import scrape_health_news
-
 load_dotenv()
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -47,16 +44,6 @@ def init_db():
         return "SUKSES: Tabel 'artikel_kesehatan' berhasil dibuat di Aiven MySQL!", 200
     except Exception as e:
         return f"GAGAL membuat tabel: {str(e)}", 500
-
-@app.route('/run-scraper')
-def run_scraper():
-    """Rute otomatis yang akan ditembak oleh cron-job.org untuk mining artikel"""
-    try:
-        # Panggil fungsi scraping dari file scraper.py
-        scrape_health_news()
-        return "SUKSES: Proses mining dan penyimpanan artikel kesehatan berhasil dijalankan!", 200
-    except Exception as e:
-        return f"GAGAL menjalankan scraper: {str(e)}", 500
 
 def cleanup_old_articles(cursor, conn):
     """FITUR 3: Auto Clean-up Storage (Hapus artikel > 1 tahun / 365 hari)"""
