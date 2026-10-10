@@ -124,31 +124,43 @@ def index():
             for art in all_articles:
                 title_text = art['title'] or ""
                 summary_text = art['summary'] or ""
-                full_text = f"{title_text} {summary_text}".lower()
+                title_lower = title_text.lower()
+                summary_lower = summary_text.lower()
                 
-                # 1. Cek sinonim dasar
-                match_keyword = any(kw in full_text for kw in search_keywords)
-                match_substring = q_lower in full_text
+                score = 0
+                matched = False
                 
-                # 2. Cek kemiripan per kata (Memecah judul/summary menjadi kata-kata terpisah)
-                # Cara ini membuat typo seperti "jantng" dicocokkan langsung dengan kata "jantung" di dalam teks
-                words_in_article = full_text.split()
-                max_score = 0
-                
-                for word in words_in_article:
-                    # Hitung kemiripan ejaan antar kata menggunakan ratio
-                    score = fuzz.ratio(q_lower, word)
-                    if score > max_score:
-                        max_score = score
-                
-                # Jika panjang query minimal 4 huruf, beri toleransi skor 65 (cukup untuk mengatasi huruf vokal yang hilang seperti "jantng")
-                min_threshold = 60 if len(q_lower) >= 4 else 80
-                
-                if match_keyword or match_substring or max_score >= min_threshold:
-                    art['search_score'] = max_score
+                # 1. Cek kecocokan langsung (Sinonim atau Substring di Judul/Summary)
+                if any(kw in title_lower or kw in summary_lower for kw in search_keywords) or q_lower in title_lower or q_lower in summary_lower:
+                    matched = True
+                    # Beri skor tinggi jika kata ditemukan langsung di judul, lebih rendah jika di summary
+                    score = 100 if q_lower in title_lower else 80
+                else:
+                    # 2. Cek Fuzzy per-kata dengan filter panjang huruf yang mirip (selisih maksimal 2 huruf)
+                    all_words = (title_lower + " " + summary_lower).split()
+                    max_word_score = 0
+                    
+                    for w in all_words:
+                        # Hanya bandingkan kata yang panjangnya mirip agar tidak meloloskan kata random
+                        if abs(len(w) - len(q_lower)) <= 2:
+                            s = fuzz.ratio(q_lower, w)
+                            if s > max_word_score:
+                                max_word_score = s
+                    
+                    # Ambang batas ketat (minimal 75 untuk word match)
+                    if max_word_score >= 75:
+                        matched = True
+                        # Cek apakah kecocokan typo ada di bagian Judul (berikan bonus nilai agar prioritas di atas)
+                        title_words = title_lower.split()
+                        in_title = any(abs(len(w) - len(q_lower)) <= 2 and fuzz.ratio(q_lower, w) >= 75 for w in title_words)
+                        score = max_word_score + (30 if in_title else 0)
+
+                # Hanya masukkan artikel yang benar-benar 'matched'
+                if matched:
+                    art['search_score'] = score
                     filtered_articles.append(art)
             
-            # Urutkan berdasarkan tingkat kemiripan tertinggi
+            # Urutkan dari skor tertinggi (Paling akurat & diutamakan yang dari judul)
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
