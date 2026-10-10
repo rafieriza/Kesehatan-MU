@@ -4,10 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kesehatan-MU | Aggregator Isu Kesehatan Terkini</title>
+    
+    <!-- 1. FAVICON (Ikon Detak Jantung di Tab Browser) -->
+    <link rel="icon" type="image/svg+xml" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/svgs/solid/heart-pulse.svg">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         .bg-teal-gradient {
             background: linear-gradient(135deg, #0f766e 0%, #115e59 50%, #134e4a 100%);
@@ -16,25 +21,32 @@
 </head>
 <body class="bg-gray-100 font-sans text-gray-800 min-h-screen flex flex-col justify-between">
 
-    <!-- 1. NAVBAR HEADER -->
+    <!-- 2. NAVBAR HEADER (Lengkap Hamburger Menu + Search Bar) -->
     <header class="bg-teal-900 text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
             
-            <!-- Logo -->
-            <a href="/" class="flex items-center space-x-2 text-2xl font-bold tracking-wide">
-                <i class="fa-solid fa-heart-pulse text-teal-300"></i>
-                <span>Kesehatan<span class="text-teal-300">-MU</span></span>
-            </a>
+            <!-- Baris Atas Mobile: Logo & Tombol Garis Tiga -->
+            <div class="flex items-center justify-between w-full md:w-auto">
+                <a href="/" class="flex items-center space-x-2 text-2xl font-bold tracking-wide">
+                    <i class="fa-solid fa-heart-pulse text-teal-300"></i>
+                    <span>Kesehatan<span class="text-teal-300">-MU</span></span>
+                </a>
 
-            <!-- Navigasi Menu -->
-            <nav class="hidden md:flex space-x-1 font-medium text-sm">
+                <!-- Tombol Garis Tiga (Khusus Layar Kecil / HP) -->
+                <button id="menu-btn" type="button" class="md:hidden text-teal-200 hover:text-white focus:outline-none p-1.5 rounded-lg border border-teal-700">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Navigasi Menu (Sembunyi di HP, Buka via Hamburger Menu / Tampil di Desktop) -->
+            <nav id="menu-dropdown" class="hidden w-full md:flex md:w-auto flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-1 font-medium text-sm pt-2 md:pt-0 border-t md:border-none border-teal-800">
                 <a href="/" class="px-3 py-2 rounded {% if not active_category and sort_by != 'trending' and not search_query %}bg-teal-800 text-white font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Home</a>
                 <a href="/?sort=latest" class="px-3 py-2 rounded {% if sort_by == 'latest' and not active_category and not search_query %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Isu Terbaru</a>
                 <a href="#kategori" class="px-3 py-2 rounded hover:bg-teal-800 transition">Kategori</a>
                 <a href="/?sort=trending" class="px-3 py-2 rounded {% if sort_by == 'trending' %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Trending</a>
             </nav>
 
-            <!-- Smart Search Bar -->
+            <!-- Smart Search Bar (Selalu Tampil) -->
             <form action="/" method="GET" class="flex items-center w-full md:w-auto">
                 <input type="text" name="q" value="{{ search_query }}" placeholder="Cari Isu (misal: diabetes, flu)..." 
                        class="px-3 py-1.5 rounded-l text-gray-800 text-sm focus:outline-none w-full md:w-60 bg-white border border-gray-300">
@@ -45,7 +57,7 @@
         </div>
     </header>
 
-    <!-- 2. HERO BANNER -->
+    <!-- 3. HERO BANNER -->
     <section class="bg-teal-gradient text-white text-center py-10 px-4 shadow-inner">
         <div class="max-w-4xl mx-auto">
             <h1 class="text-3xl md:text-4xl font-extrabold mb-2">Sistem Aggregator Isu Kesehatan Terkini</h1>
@@ -55,7 +67,7 @@
         </div>
     </section>
 
-    <!-- 3. MAIN CONTENT (2 KOLOM LAYOUT) -->
+    <!-- 4. MAIN CONTENT (2 KOLOM LAYOUT) -->
     <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
@@ -180,16 +192,25 @@
         </div>
     </main>
 
-    <!-- 4. FOOTER -->
+    <!-- 5. FOOTER (Dengan Link Instagram @rafieriza) -->
     <footer class="bg-slate-900 text-gray-400 py-4 px-4 text-center text-xs mt-auto">
         <p>&copy; 2026 Kesehatan-MU. Developed by 
             <a href="https://instagram.com/rafieriza_" target="_blank" rel="noopener noreferrer" class="text-teal-400 hover:text-teal-300 font-semibold hover:underline">
-                @rafieriza <i class="fa-brands fa-instagram text-xs ml-0.5"></i>
+                @rafieriza_ <i class="fa-brands fa-instagram text-xs ml-0.5"></i>
             </a>. 
             Seluruh hak cipta konten milik portal sumber asli.
         </p>
         <p class="text-[11px] text-gray-500 mt-0.5">Dikembangkan sebagai sistem aggregator isu kesehatan otomatis.</p>
     </footer>
 
+    <!-- 6. SCRIPT JAVASCRIPT UNTUK HAMBURGER MENU -->
+    <script>
+        const menuBtn = document.getElementById('menu-btn');
+        const menuDropdown = document.getElementById('menu-dropdown');
+
+        menuBtn.addEventListener('click', () => {
+            menuDropdown.classList.toggle('hidden');
+        });
+    </script>
 </body>
 </html>
