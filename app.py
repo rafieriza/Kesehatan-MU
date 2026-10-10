@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from flask import Flask, request, render_template
 import mysql.connector
 from dotenv import load_dotenv
+from rapidfuzz import fuzz
 
 load_dotenv()
 
@@ -111,20 +112,64 @@ def index():
         # 1. Jalankan Pembersihan Artikel Lama (>1 Tahun)
         cleanup_old_articles(cursor, conn)
 
-        # 2. Logika Query Utama
-        sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
-        params = []
-
-        # Smart Search logic
+        # 2. Logika Query Utama & Smart Search dengan RapidFuzz + Pecah Kata
         if query:
+            # Ambil semua data untuk disaring menggunakan logika pintar Python (Sinonim + Typo + Pecah Kata)
+            cursor.execute("SELECT * FROM artikel_kesehatan")
+            all_articles = cursor.fetchall()
+            
             search_keywords = get_synonyms_and_keywords(query)
-            search_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in search_keywords])
-            sql += f" AND ({search_conditions})"
-            for kw in search_keywords:
-                params.extend([f"%{kw}%", f"%{kw}%"])
+            words = query.split()
+            filtered_articles = []
 
-        # Category Filtering Logic
-        if category:
+            for art in all_articles:
+                text_content = f"{art['title']} {art['summary']}".lower()
+                
+                # A. Cek kecocokan berdasarkan Kamus Sinonim & Keyword
+                match_keyword = any(kw in text_content for kw in search_keywords)
+                
+                # B. Pecah Kata Fleksibel: Apakah seluruh kata terketik ada di artikel
+                match_all_words = all(w.lower() in text_content for w in words)
+                
+                # C. Fuzzy Matching (Toleransi Typo menggunakan RapidFuzz, ambang batas kemiripan > 60%)
+                fuzzy_score = fuzz.partial_ratio(query.lower(), text_content)
+                
+                if match_keyword or match_all_words or fuzzy_score > 60:
+                    filtered_articles.append(art)
+            
+            articles = filtered_articles
+        else:
+            # Query standar jika tidak sedang mencari (berdasarkan kategori & sorting)
+            sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
+            params = []
+
+            # Category Filtering Logic
+            if category:
+                category_map = {
+                    'penyakit': ['vaksin', 'virus', 'infeksi', 'dbd', 'mpox', 'covid', 'flu', 'demam', 'tbc'],
+                    'mental': ['depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi', 'ansietas'],
+                    'gaya_hidup': ['olahraga', 'tidur', 'rokok', 'hidup', 'gigi', 'kulit', 'fitness'],
+                    'nutrisi': ['diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur', 'obesitas'],
+                    'medis': ['rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'jantung', 'diabetes', 'hipertensi']
+                }
+                keywords = category_map.get(category, [])
+                if keywords:
+                    cat_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in keywords])
+                    sql += f" AND ({cat_conditions})"
+                    for kw in keywords:
+                        params.extend([f"%{kw}%", f"%{kw}%"])
+
+            # Sorting logic
+            if sort_by == 'trending':
+                sql += " ORDER BY id DESC LIMIT 10"
+            else:
+                sql += " ORDER BY published_at DESC, id DESC LIMIT 20"
+
+            cursor.execute(sql, tuple(params))
+            articles = cursor.fetchall()
+
+        # Jika user melakukan pencarian dan sekaligus memilih kategori, filter lagi hasilnya
+        if query and category:
             category_map = {
                 'penyakit': ['vaksin', 'virus', 'infeksi', 'dbd', 'mpox', 'covid', 'flu', 'demam', 'tbc'],
                 'mental': ['depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi', 'ansietas'],
@@ -132,21 +177,12 @@ def index():
                 'nutrisi': ['diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur', 'obesitas'],
                 'medis': ['rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'jantung', 'diabetes', 'hipertensi']
             }
-            keywords = category_map.get(category, [])
-            if keywords:
-                cat_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in keywords])
-                sql += f" AND ({cat_conditions})"
-                for kw in keywords:
-                    params.extend([f"%{kw}%", f"%{kw}%"])
+            cat_keywords = category_map.get(category, [])
+            articles = [art for art in articles if any(ck in f"{art['title']} {art['summary']}".lower() for ck in cat_keywords)]
 
-        # Sorting logic
-        if sort_by == 'trending':
-            sql += " ORDER BY id DESC LIMIT 10"
-        else:
-            sql += " ORDER BY published_at DESC, id DESC LIMIT 20"
-
-        cursor.execute(sql, tuple(params))
-        articles = cursor.fetchall()
+        # Sorting manual khusus hasil pencarian gabungan
+        if query and sort_by == 'latest':
+            articles = sorted(articles, key=lambda x: x.get('published_at', datetime.min), reverse=True)
 
         # Isu Populer untuk Sidebar
         cursor.execute("SELECT * FROM artikel_kesehatan ORDER BY id DESC LIMIT 5")
