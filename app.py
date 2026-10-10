@@ -114,34 +114,41 @@ def index():
 
         # 2. Logika Query Utama & Smart Search dengan RapidFuzz + Pecah Kata
         if query:
-            # Ambil semua data untuk disaring dengan RapidFuzz yang lebih spesifik
             cursor.execute("SELECT * FROM artikel_kesehatan")
             all_articles = cursor.fetchall()
             
             search_keywords = get_synonyms_and_keywords(query)
             filtered_articles = []
-
+            
+            # Ubah query ke huruf kecil untuk perbandingan
+            q_lower = query.lower()
+            
             for art in all_articles:
                 title_text = art['title'] or ""
                 summary_text = art['summary'] or ""
                 full_text = f"{title_text} {summary_text}".lower()
                 
-                # 1. Cek kecocokan kamus sinonim/keyword dasar
+                # 1. Cek sinonim dasar
                 match_keyword = any(kw in full_text for kw in search_keywords)
                 
-                # 2. Gunakan WRatio untuk mendeteksi typo & kemiripan frasa secara presisi
-                # Kita cek ke judul (diberi bobot lebih tinggi) dan summary
-                title_score = fuzz.WRatio(query.lower(), title_text.lower())
-                summary_score = fuzz.WRatio(query.lower(), summary_text.lower())
+                # 2. Cek apakah kata persis ada di dalam teks (substring check)
+                match_substring = q_lower in full_text
+                
+                # 3. Fuzzy match dengan bobot token_sort_ratio (lebih stabil untuk typo acak di tengah/depan)
+                title_score = fuzz.token_sort_ratio(q_lower, title_text.lower())
+                summary_score = fuzz.token_sort_ratio(q_lower, summary_text.lower())
                 max_score = max(title_score, summary_score)
                 
-                # Hanya ambil jika ada keyword yang cocok ATAU skor kemiripan >= 75 (ketat & spesifik)
-                if match_keyword or max_score >= 80:
-                    # Simpan skor kemiripan pada objek artikel untuk keperluan sorting
+                # PENGAMAN TAMBAHAN (Guardrail):
+                # Jika panjang query pendek (misal di bawah 4 huruf), wajib kemiripan tinggi.
+                # Jika query agak panjang (seperti "jntung" = 6 huruf), skor 60-65 sudah aman dan spesifik.
+                min_threshold = 65 if len(q_lower) >= 8 else 80
+                
+                if match_keyword or match_substring or max_score >= min_threshold:
                     art['search_score'] = max_score
                     filtered_articles.append(art)
             
-            # URUTKAN BERDASARKAN SKOR TERTINGGI: Yang paling mirip dengan ketikan user ditaruh di paling atas!
+            # Urutkan dari yang paling mirip
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
