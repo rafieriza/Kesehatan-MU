@@ -84,6 +84,16 @@ def get_synonyms_and_keywords(query):
             
     return list(set(matched_keywords))
 
+@app.route('/run-scraper')
+def run_scraper():
+    """Rute untuk memicu scraper.py secara otomatis"""
+    try:
+        from scraper import scrape_kesehatan
+        scrape_kesehatan()
+        return "SUKSES: Proses RSS scraping berhasil dijalankan!", 200
+    except Exception as e:
+        return f"SCRAPER NOTICE: Berjalan dengan kendala: {str(e)}", 200
+
 @app.route('/')
 def index():
     query = request.args.get('q', '').strip()
