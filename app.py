@@ -118,11 +118,9 @@ def index():
             all_articles = cursor.fetchall()
             
             search_keywords = get_synonyms_and_keywords(query)
+            q_lower = query.lower().strip()
             filtered_articles = []
-            
-            # Ubah query ke huruf kecil untuk perbandingan
-            q_lower = query.lower()
-            
+
             for art in all_articles:
                 title_text = art['title'] or ""
                 summary_text = art['summary'] or ""
@@ -130,25 +128,27 @@ def index():
                 
                 # 1. Cek sinonim dasar
                 match_keyword = any(kw in full_text for kw in search_keywords)
-                
-                # 2. Cek apakah kata persis ada di dalam teks (substring check)
                 match_substring = q_lower in full_text
                 
-                # 3. Fuzzy match dengan bobot token_sort_ratio (lebih stabil untuk typo acak di tengah/depan)
-                title_score = fuzz.token_sort_ratio(q_lower, title_text.lower())
-                summary_score = fuzz.token_sort_ratio(q_lower, summary_text.lower())
-                max_score = max(title_score, summary_score)
+                # 2. Cek kemiripan per kata (Memecah judul/summary menjadi kata-kata terpisah)
+                # Cara ini membuat typo seperti "jantng" dicocokkan langsung dengan kata "jantung" di dalam teks
+                words_in_article = full_text.split()
+                max_score = 0
                 
-                # PENGAMAN TAMBAHAN (Guardrail):
-                # Jika panjang query pendek (misal di bawah 4 huruf), wajib kemiripan tinggi.
-                # Jika query agak panjang (seperti "jntung" = 6 huruf), skor 60-65 sudah aman dan spesifik.
-                min_threshold = 65 if len(q_lower) >= 8 else 80
+                for word in words_in_article:
+                    # Hitung kemiripan ejaan antar kata menggunakan ratio
+                    score = fuzz.ratio(q_lower, word)
+                    if score > max_score:
+                        max_score = score
+                
+                # Jika panjang query minimal 4 huruf, beri toleransi skor 65 (cukup untuk mengatasi huruf vokal yang hilang seperti "jantng")
+                min_threshold = 60 if len(q_lower) >= 4 else 80
                 
                 if match_keyword or match_substring or max_score >= min_threshold:
                     art['search_score'] = max_score
                     filtered_articles.append(art)
             
-            # Urutkan dari yang paling mirip
+            # Urutkan berdasarkan tingkat kemiripan tertinggi
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
