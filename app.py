@@ -4,6 +4,9 @@ from flask import Flask, request, render_template
 import mysql.connector
 from dotenv import load_dotenv
 
+# Import fungsi scraper yang sudah lu buat
+from scraper import scrape_health_news
+
 load_dotenv()
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -18,6 +21,42 @@ def get_db_connection():
         database=os.getenv("DB_NAME"),
         connect_timeout=5
     )
+
+@app.route('/init-db')
+def init_db():
+    """Rute sekali pakai untuk membuat tabel database di Aiven MySQL"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS artikel_kesehatan (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            summary TEXT,
+            source VARCHAR(100) NOT NULL,
+            url VARCHAR(500) NOT NULL UNIQUE,
+            image_url VARCHAR(500),
+            published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """
+        cursor.execute(create_table_query)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return "SUKSES: Tabel 'artikel_kesehatan' berhasil dibuat di Aiven MySQL!", 200
+    except Exception as e:
+        return f"GAGAL membuat tabel: {str(e)}", 500
+
+@app.route('/run-scraper')
+def run_scraper():
+    """Rute otomatis yang akan ditembak oleh cron-job.org untuk mining artikel"""
+    try:
+        # Panggil fungsi scraping dari file scraper.py
+        scrape_health_news()
+        return "SUKSES: Proses mining dan penyimpanan artikel kesehatan berhasil dijalankan!", 200
+    except Exception as e:
+        return f"GAGAL menjalankan scraper: {str(e)}", 500
 
 def cleanup_old_articles(cursor, conn):
     """FITUR 3: Auto Clean-up Storage (Hapus artikel > 1 tahun / 365 hari)"""
