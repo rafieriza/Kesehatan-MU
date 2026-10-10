@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, render_template
 import mysql.connector
 from dotenv import load_dotenv
 
+# Load local .env if it exists (safe for local development, ignored on Vercel)
 load_dotenv()
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -18,68 +19,62 @@ def get_db_connection():
     )
 
 @app.route('/')
-def home():
-    return render_template('index.html')
+def index():
+    query = request.args.get('q', '').strip()
+    category = request.args.get('category', '').strip()
+    sort_by = request.args.get('sort', 'latest').strip()
 
-@app.route('/api/articles', methods=['GET'])
-def get_articles():
-    page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 10))
-    search = request.args.get('q', '').strip()
-    sumber = request.args.get('sumber', '').strip()
-    offset = (page - 1) * limit
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+    sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
+    params = []
 
-        params = []
-        where_clauses = []
+    # Logika Pencarian Kata Kunci
+    if query:
+        sql += " AND (title LIKE %s OR summary LIKE %s)"
+        params.extend([f"%{query}%", f"%{query}%"])
 
-        # Fitur Smart Search menggunakan FULLTEXT MySQL
-        if search:
-            where_clauses.append("MATCH(judul, ringkasan) AGAINST(%s IN BOOLEAN MODE)")
-            params.append(f"*{search}*")
+    # Logika Filter Kategori Berdasarkan Kata Kunci
+    if category:
+        category_map = {
+            'penyakit': ['vaksin', 'virus', 'infeksi', 'dbd', 'mpox', 'covid', 'flu', 'demam'],
+            'mental': ['depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi'],
+            'gaya_hidup': ['olahraga', 'tidur', 'rokok', 'hidup', 'gigi', 'kulit'],
+            'nutrisi': ['diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur'],
+            'medis': ['rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'jantung', 'diabetes']
+        }
+        keywords = category_map.get(category, [])
+        if keywords:
+            cat_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in keywords])
+            sql += f" AND ({cat_conditions})"
+            for kw in keywords:
+                params.extend([f"%{kw}%", f"%{kw}%"])
 
-        if sumber:
-            where_clauses.append("sumber_portal = %s")
-            params.append(sumber)
+    # Logika Pengurutan (Terbaru vs Trending)
+    if sort_by == 'trending':
+        sql += " ORDER BY id DESC LIMIT 10"
+    else:
+        sql += " ORDER BY published_at DESC, id DESC LIMIT 20"
 
-        where_sql = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+    cursor.execute(sql, tuple(params))
+    articles = cursor.fetchall()
 
-        # Hitung total artikel buat pagination
-        count_query = f"SELECT COUNT(*) as total FROM artikel_kesehatan{where_sql}"
-        cursor.execute(count_query, params)
-        total_items = cursor.fetchone()['total']
+    # Mengambil Top 5 Isu Populer untuk Sidebar Kanan
+    cursor.execute("SELECT * FROM artikel_kesehatan ORDER BY id DESC LIMIT 5")
+    trending_articles = cursor.fetchall()
 
-        # Query ambil daftar artikel
-        query = f"""
-            SELECT id, judul, ringkasan, sumber_portal, url_artikel, url_gambar, tanggal_terbit 
-            FROM artikel_kesehatan
-            {where_sql}
-            ORDER BY tanggal_terbit DESC 
-            LIMIT %s OFFSET %s
-        """
-        params.extend([limit, offset])
-        cursor.execute(query, params)
-        articles = cursor.fetchall()
+    cursor.close()
+    conn.close()
 
-        cursor.close()
-        conn.close()
-
-        return jsonify({
-            'status': 'success',
-            'data': articles,
-            'pagination': {
-                'page': page,
-                'limit': limit,
-                'total_items': total_items,
-                'total_pages': math.ceil(total_items / limit) if limit > 0 else 1
-            }
-        })
-
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+    return render_template(
+        'index.html',
+        articles=articles,
+        trending_articles=trending_articles,
+        search_query=query,
+        active_category=category,
+        sort_by=sort_by
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
