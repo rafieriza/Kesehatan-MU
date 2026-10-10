@@ -1,10 +1,11 @@
 import os
-import requests
-from bs4 import BeautifulSoup
+import feedparser
+from datetime import datetime
+import time
+import re
 import mysql.connector
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 def get_db_connection():
@@ -37,77 +38,108 @@ def init_db():
     cursor.close()
     conn.close()
 
+def parse_date(entry):
+    """Mendeteksi tanggal terbit dari RSS feed secara akurat"""
+    if hasattr(entry, 'published_parsed') and entry.published_parsed:
+        return datetime.fromtimestamp(time.mktime(entry.published_parsed))
+    elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+        return datetime.fromtimestamp(time.mktime(entry.updated_parsed))
+    return datetime.now()
+
+def is_health_article(judul):
+    """Filter berbasis judul untuk memastikan kontennya seputar kesehatan/medis"""
+    text = judul.lower()
+
+    # Kata Kunci Negatif (Buang jika membahas non-kesehatan)
+    exclude_keywords = [
+        'resep', 'kuliner', 'restoran', 'makanan', 'gaun', 'fashion', 
+        'outfit', 'skincare', 'makeup', 'wisata', 'destinasi', 'hotel', 
+        'tiket', 'konser', 'film', 'zodiak', 'ramalan', 'pariwisata'
+    ]
+    if any(ex in text for ex in exclude_keywords):
+        return False
+
+    # Kata Kunci Positif (Unsur kesehatan/medis)
+    health_keywords = [
+        'kesehatan', 'sehat', 'dokter', 'rs', 'rumah sakit', 'obat', 'penyakit', 
+        'virus', 'bakteri', 'vaksin', 'gizi', 'nutrisi', 'diet', 'kanker', 
+        'diabetes', 'jantung', 'stroke', 'hipertensi', 'darah tinggi', 'mental', 
+        'depresi', 'stres', 'klinik', 'medis', 'pasien', 'infeksi', 'demam', 
+        'dbd', 'flu', 'covid', 'tumor', 'kulit', 'gigi', 'mpox', 'bpjs', 
+        'imunisasi', 'tidur', 'gejala', 'stunting', 'cedera', 'olahraga'
+    ]
+    
+    return any(keyword in text for keyword in health_keywords)
+
 def auto_cleanup():
-    """Fitur Auto Clean-Up Storage: Hapus artikel yang usianya lebih dari 180 hari (6 bulan)"""
+    """Hapus artikel yang usianya lebih dari 180 hari"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM artikel_kesehatan WHERE created_at < NOW() - INTERVAL 180 DAY")
-        deleted_count = cursor.rowcount
         conn.commit()
-        print(f"[CLEANUP] Berhasil membersihkan {deleted_count} artikel lama.")
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"[CLEANUP ERROR] Gagal membersihkan storage: {e}")
+        print(f"[CLEANUP ERROR]: {e}")
 
 def scrape_kesehatan():
-    print("[SCRAPER] Memulai proses scraping berita kesehatan...")
+    print("[SCRAPER] Memulai proses penarikan RSS berita kesehatan...")
     init_db()
     
-    # Contoh endpoint berita RSS/Scraping sederhana
-    # Kamu bisa menambahkan daftar URL portal kesehatan lainnya di sini
+    # MULTI-SLOT RSS SOURCES: Tambahkan link RSS portal lain di bawah sini jika sudah menemukannya!
     sources = [
         {
-            "name": "Detik Health",
-            "url": "https://health.detik.com/"
-        }
+            "name": "CNN Indonesia",
+            "url": "https://www.cnnindonesia.com/gaya-hidup/rss"
+        },
+        # {"name": "Portal Lain", "url": "https://link-rss-lain.com/rss"}
     ]
     
     conn = get_db_connection()
     cursor = conn.cursor()
     inserted_count = 0
 
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-
     for src in sources:
         try:
-            res = requests.get(src["url"], headers=headers, timeout=10)
-            if res.status_code == 200:
-                soup = BeautifulSoup(res.text, 'html.parser')
-                articles = soup.find_all('article')
+            parsed_feed = feedparser.parse(src["url"])
+            
+            for entry in parsed_feed.entries:
+                judul = entry.get('title', '').strip()
+                url_artikel = entry.get('link', '').strip()
                 
-                for art in articles[:10]:  # Ambil 10 artikel terbaru per portal
-                    title_elem = art.find('h3') or art.find('h2')
-                    link_elem = art.find('a')
-                    img_elem = art.find('img')
-                    
-                    if title_elem and link_elem:
-                        judul = title_elem.get_text(strip=True)
-                        url_artikel = link_elem.get('href', '')
-                        url_gambar = img_elem.get('src', '') if img_elem else ''
-                        ringkasan = f"Artikel kesehatan terbaru dari {src['name']}."
+                raw_summary = entry.get('summary', '').strip() or entry.get('description', '').strip()
+                ringkasan = re.sub('<[^<]+?>', '', raw_summary)
+                if len(ringkasan) > 200:
+                    ringkasan = ringkasan[:200] + "..."
 
-                        if url_artikel.startswith('http'):
-                            try:
-                                sql = """
-                                INSERT INTO artikel_kesehatan (judul, ringkasan, sumber_portal, url_artikel, url_gambar)
-                                VALUES (%s, %s, %s, %s, %s)
-                                ON DUPLICATE KEY UPDATE judul=VALUES(judul)
-                                """
-                                cursor.execute(sql, (judul, ringkasan, src['name'], url_artikel, url_gambar))
-                                inserted_count += cursor.rowcount
-                            except Exception as db_err:
-                                print(f"Error insert artikel: {db_err}")
+                # Ambil gambar jika ada
+                url_gambar = ""
+                if hasattr(entry, 'media_content') and entry.media_content:
+                    url_gambar = entry.media_content[0].get('url', '')
+                elif hasattr(entry, 'enclosures') and entry.enclosures:
+                    url_gambar = entry.enclosures[0].get('href', '')
+
+                tanggal_terbit = parse_date(entry)
+
+                if judul and url_artikel and is_health_article(judul):
+                    try:
+                        sql = """
+                        INSERT IGNORE INTO artikel_kesehatan 
+                        (judul, ringkasan, sumber_portal, url_artikel, url_gambar, tanggal_terbit)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """
+                        cursor.execute(sql, (judul, ringkasan, src['name'], url_artikel, url_gambar, tanggal_terbit))
+                        inserted_count += cursor.rowcount
+                    except Exception as db_err:
+                        print(f"Error insert artikel: {db_err}")
         except Exception as e:
-            print(f"Gagal scraping dari {src['name']}: {e}")
+            print(f"Gagal memproses RSS dari {src['name']}: {e}")
 
     conn.commit()
     cursor.close()
     conn.close()
-    print(f"[SCRAPER] Selesai! Berhasil memproses {inserted_count} artikel.")
-    
-    # Jalankan pembersihan otomatis
+    print(f"[SCRAPER] Selesai! Berhasil memproses {inserted_count} artikel baru.")
     auto_cleanup()
 
 if __name__ == "__main__":
