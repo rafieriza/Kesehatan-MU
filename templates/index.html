@@ -232,6 +232,21 @@
         menuBtn.addEventListener('click', () => {
             menuDropdown.classList.toggle('hidden');
         });
+        // Toggle dropdown kategori khusus klik di HP
+        const categoryMenuBtn = document.getElementById('category-menu-btn');
+        const categoryDropdownList = document.getElementById('category-dropdown-list');
+
+        categoryMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            categoryDropdownList.classList.toggle('hidden');
+        });
+
+        // Tutup dropdown kalau klik di luar
+        window.addEventListener('click', () => {
+            if (!categoryDropdownList.classList.contains('hidden')) {
+                categoryDropdownList.classList.add('hidden');
+            }
+        });
     </script>
 </body>
 </html>
