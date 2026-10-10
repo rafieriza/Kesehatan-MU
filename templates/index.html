@@ -3,193 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kesehatan-MU - Agregator Berita Kesehatan Terpercaya</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Kesehatan-MU | Aggregator Isu Kesehatan Terkini</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+        .bg-teal-gradient {
+            background: linear-gradient(135deg, #0f766e 0%, #115e59 50%, #134e4a 100%);
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
+<body class="bg-gray-100 font-sans text-gray-800 min-h-screen flex flex-col justify-between">
 
-    <!-- Header Navigation -->
-    <header class="bg-emerald-600 text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <a href="/" class="flex items-center gap-2 text-2xl font-bold tracking-tight">
-                <i class="fa-solid font-bold fa-heart-pulse text-red-300"></i> Kesehatan-MU
+    <!-- 1. NAVBAR -->
+    <header class="bg-teal-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Logo -->
+            <a href="/" class="flex items-center space-x-2 text-2xl font-bold tracking-wide">
+                <i class="fa-solid fa-heart-pulse text-teal-300"></i>
+                <span>Kesehatan<span class="text-teal-300">-MU</span></span>
             </a>
-            <p class="text-xs sm:text-sm text-emerald-100 font-medium">Portal Agregator Berita Kesehatan 24/7</p>
+
+            <!-- Menu Navigation -->
+            <nav class="hidden md:flex space-x-1 font-medium text-sm">
+                <a href="/" class="px-3 py-2 rounded {% if not active_category and sort_by != 'trending' %}bg-teal-800 text-white font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Home</a>
+                <a href="/?sort=latest" class="px-3 py-2 rounded {% if sort_by == 'latest' and not active_category %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Isu Terbaru</a>
+                <a href="#kategori" class="px-3 py-2 rounded hover:bg-teal-800 transition">Kategori</a>
+                <a href="/?sort=trending" class="px-3 py-2 rounded {% if sort_by == 'trending' %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Trending</a>
+            </nav>
+
+            <!-- Search Bar -->
+            <form action="/" method="GET" class="flex items-center w-full md:w-auto">
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Cari Isu Kesehatan..." 
+                       class="px-3 py-1.5 rounded-l text-gray-800 text-sm focus:outline-none w-full md:w-56 bg-white border border-gray-300">
+                <button type="submit" class="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1.5 rounded-r transition">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+            </form>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full">
+    <!-- 2. HERO BANNER -->
+    <section class="bg-teal-gradient text-white text-center py-10 px-4 shadow-inner">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl md:text-4xl font-extrabold mb-2">Sistem Aggregator Isu Kesehatan Terkini</h1>
+            <p class="text-teal-100 text-sm md:text-base font-light">
+                Aplikasi Kesehatan Jangka Panjang Otomatis Melalui Web Scraping
+            </p>
+        </div>
+    </section>
 
-        <!-- Search & Filter Bar -->
-        <section class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
-            <div class="flex flex-col md:flex-row gap-3">
-                <div class="relative flex-1">
-                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="searchInput" placeholder="Cari artikel kesehatan (contoh: flu, diet, jantung)..." 
-                        class="w-full pl-11 pr-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all text-sm sm:text-base">
+    <!-- 3. MAIN CONTENT LAYOUT (2 KOLOM) -->
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            
+            <!-- KOLOM KIRI (3/4): Berita Utama -->
+            <div class="lg:col-span-3">
+                <div class="flex items-center justify-between mb-6 border-b pb-2 border-gray-200">
+                    <h2 class="text-xl md:text-2xl font-bold text-gray-800">
+                        {% if active_category %}
+                            Kategori: <span class="text-teal-700 capitalize">{{ active_category.replace('_', ' ') }}</span>
+                        {% elif sort_by == 'trending' %}
+                            Isu Kesehatan Trending
+                        {% else %}
+                            Isu Kesehatan Terbaru
+                        {% endif %}
+                    </h2>
+                    {% if search_query or active_category or sort_by == 'trending' %}
+                        <a href="/" class="text-xs text-teal-600 hover:underline">Tampilkan Semua</a>
+                    {% endif %}
                 </div>
-                <select id="sumberFilter" class="px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm sm:text-base bg-white">
-                    <option value="">Semua Portal</option>
-                    <option value="Detik Health">Detik Health</option>
-                </select>
+
+                {% if articles %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                        {% for article in articles %}
+                            <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col justify-between hover:shadow-lg transition">
+                                <div class="h-40 bg-teal-50 flex items-center justify-center overflow-hidden border-b border-gray-100">
+                                    {% if article.image_url %}
+                                        <img src="{{ article.image_url }}" alt="{{ article.title }}" class="w-full h-full object-cover">
+                                    {% else %}
+                                        <i class="fa-solid fa-newspaper text-4xl text-teal-300"></i>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="p-4 flex-grow flex flex-col justify-between">
+                                    <div>
+                                        <h3 class="font-bold text-gray-900 text-sm mb-2 line-clamp-2 hover:text-teal-700">
+                                            {{ article.title }}
+                                        </h3>
+                                        <p class="text-gray-600 text-xs mb-3 line-clamp-3">
+                                            {{ article.summary if article.summary else 'Baca artikel selengkapnya langsung dari portal sumber.' }}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-[11px] text-gray-500 mb-3 space-y-0.5">
+                                            <p><span class="font-semibold text-gray-700">Source Portal:</span> {{ article.source }}</p>
+                                            <p><span class="font-semibold text-gray-700">Published Date:</span> {{ article.published_at.strftime('%d %b %Y') if article.published_at else 'Terbaru' }}</p>
+                                        </div>
+                                        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
+                                           class="block text-center bg-teal-600 hover:bg-teal-700 text-white font-medium text-xs py-2 px-3 rounded transition shadow-sm">
+                                            Baca Selengkapnya
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <!-- Empty State / Belum Ada Data -->
+                    <div class="bg-white rounded-lg p-12 text-center shadow-sm border border-gray-200">
+                        <i class="fa-solid fa-database text-4xl text-teal-600 mb-4"></i>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-1">Database Masih Kosong</h3>
+                        <p class="text-sm text-gray-500 max-w-md mx-auto">
+                            Belum ada artikel di database. Silakan jalankan skrip `scraper.py` untuk mulai mengisi data.
+                        </p>
+                    </div>
+                {% endif %}
             </div>
-        </section>
 
-        <!-- Loading Indicator -->
-        <div id="loadingIndicator" class="hidden flex-col items-center justify-center py-16">
-            <div class="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
-            <p class="mt-4 text-slate-500 font-medium text-sm">Mencari artikel kesehatan...</p>
+            <!-- KOLOM KANAN (1/4): Sidebar -->
+            <aside class="space-y-6">
+                <!-- Widget Kategori -->
+                <div id="kategori" class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="font-bold text-gray-800 text-base mb-3 border-b pb-2">Kategori Isu Kesehatan</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="/?category=penyakit" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Penyakit Menular</a></li>
+                        <li><a href="/?category=mental" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Kesehatan Mental</a></li>
+                        <li><a href="/?category=gaya_hidup" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Gaya Hidup Sehat</a></li>
+                        <li><a href="/?category=nutrisi" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Nutrisi & Diet</a></li>
+                        <li><a href="/?category=medis" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Berita Medis</a></li>
+                    </ul>
+                </div>
+
+                <!-- Widget Isu Populer (Trending) -->
+                <div id="trending" class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="font-bold text-gray-800 text-base mb-3 border-b pb-2">Isu Populer</h3>
+                    <ol class="space-y-3 text-sm">
+                        {% if trending_articles %}
+                            {% for item in trending_articles %}
+                                <li class="flex items-start space-x-3">
+                                    <span class="text-teal-600 font-extrabold text-lg leading-none">{{ loop.index }}</span>
+                                    <a href="{{ item.url }}" target="_blank" class="text-gray-700 hover:text-teal-700 text-xs font-semibold hover:underline line-clamp-2">
+                                        {{ item.title }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="text-xs text-gray-400 italic">Belum ada isu populer.</li>
+                        {% endif %}
+                    </ol>
+                </div>
+            </aside>
+
         </div>
-
-        <!-- Empty State -->
-        <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center">
-            <div class="bg-slate-100 p-4 rounded-full mb-3">
-                <i class="fa-solid fa-file-circle-xmark text-4xl text-slate-400"></i>
-            </div>
-            <h3 class="text-lg font-semibold text-slate-700">Artikel Tidak Ditemukan</h3>
-            <p class="text-slate-500 text-sm mt-1">Coba gunakan kata kunci lain atau pilih portal berita yang berbeda.</p>
-        </div>
-
-        <!-- Articles Grid -->
-        <div id="articlesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Data artikel akan di-render lewat JavaScript -->
-        </div>
-
-        <!-- Pagination -->
-        <div id="paginationContainer" class="flex justify-center items-center gap-2 mt-10">
-            <!-- Tombol pagination akan di-render lewat JavaScript -->
-        </div>
-
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-slate-800 text-slate-400 py-6 mt-auto">
-        <div class="max-w-6xl mx-auto px-4 text-center text-xs sm:text-sm">
-            <p>&copy; 2026 Kesehatan-MU. Seluruh konten hak cipta portal berita asli.</p>
-            <p class="mt-1 text-slate-500">Dikembangkan untuk akses berita kesehatan cepat, gratis, dan terpercaya.</p>
-        </div>
+    <!-- 4. FOOTER -->
+    <footer class="bg-slate-900 text-gray-400 py-4 px-4 text-center text-xs mt-auto">
+        <p>&copy; 2026 Kesehatan-MU. Seluruh konten hak cipta portal berita asli.</p>
+        <p class="text-[11px] text-gray-500 mt-0.5">Dikembangkan untuk akses berita kesehatan cepat, gratis, dan terpercaya.</p>
     </footer>
 
-    <!-- JavaScript Logic -->
-    <script>
-        let currentPage = 1;
-        let searchTimeout = null;
-
-        const searchInput = document.getElementById('searchInput');
-        const sumberFilter = document.getElementById('sumberFilter');
-        const articlesGrid = document.getElementById('articlesGrid');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        const emptyState = document.getElementById('emptyState');
-        const paginationContainer = document.getElementById('paginationContainer');
-
-        async function fetchArticles(page = 1) {
-            currentPage = page;
-            const query = searchInput.value.trim();
-            const sumber = sumberFilter.value;
-
-            loadingIndicator.classList.remove('hidden');
-            loadingIndicator.classList.add('flex');
-            articlesGrid.innerHTML = '';
-            emptyState.classList.add('hidden');
-            emptyState.classList.remove('flex');
-            paginationContainer.innerHTML = '';
-
-            try {
-                const response = await fetch(`/api/articles?page=${page}&limit=9&q=${encodeURIComponent(query)}&sumber=${encodeURIComponent(sumber)}`);
-                const result = await response.json();
-
-                loadingIndicator.classList.add('hidden');
-                loadingIndicator.classList.remove('flex');
-
-                if (result.status === 'success' && result.data.length > 0) {
-                    renderArticles(result.data);
-                    renderPagination(result.pagination);
-                } else {
-                    emptyState.classList.remove('hidden');
-                    emptyState.classList.add('flex');
-                }
-            } catch (error) {
-                console.error('Gagal mengambil data:', error);
-                loadingIndicator.classList.add('hidden');
-                loadingIndicator.classList.remove('flex');
-                emptyState.classList.remove('hidden');
-                emptyState.classList.add('flex');
-            }
-        }
-
-        function renderArticles(articles) {
-            articlesGrid.innerHTML = articles.map(art => {
-                const fallbackImg = 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=500&auto=format&fit=crop&q=60';
-                const imgUrl = art.url_gambar || fallbackImg;
-                const formattedDate = new Date(art.tanggal_terbit).toLocaleDateString('id-ID', {
-                    day: 'numeric', month: 'short', year: 'numeric'
-                });
-
-                return `
-                    <article class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                        <img src="${imgUrl}" alt="${art.judul}" class="w-full h-48 object-cover bg-slate-100" onerror="this.src='${fallbackImg}'">
-                        <div class="p-5 flex flex-col flex-grow">
-                            <div class="flex items-center justify-between gap-2 mb-3">
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-md">
-                                    ${art.sumber_portal}
-                                </span>
-                                <span class="text-xs text-slate-400">
-                                    <i class="fa-regular fa-clock mr-1"></i>${formattedDate}
-                                </span>
-                            </div>
-                            <h2 class="font-bold text-slate-800 text-base sm:text-lg mb-2 line-clamp-2 hover:text-emerald-600 transition-colors">
-                                <a href="${art.url_artikel}" target="_blank" rel="noopener noreferrer">${art.judul}</a>
-                            </h2>
-                            <p class="text-slate-600 text-xs sm:text-sm line-clamp-2 mb-4 flex-grow">${art.ringkasan}</p>
-                            <a href="${art.url_artikel}" target="_blank" rel="noopener noreferrer" 
-                               class="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-slate-100 text-emerald-700 hover:bg-emerald-600 hover:text-white font-medium text-xs sm:text-sm rounded-xl transition-colors">
-                                Baca Selengkapnya <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-                            </a>
-                        </div>
-                    </article>
-                `;
-            }).join('');
-        }
-
-        function renderPagination(pagination) {
-            if (pagination.total_pages <= 1) return;
-
-            let buttons = '';
-            for (let i = 1; i <= pagination.total_pages; i++) {
-                const isActive = i === pagination.page;
-                buttons += `
-                    <button onclick="fetchArticles(${i})" 
-                        class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                            isActive ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }">
-                        ${i}
-                    </button>
-                `;
-            }
-            paginationContainer.innerHTML = buttons;
-        }
-
-        searchInput.addEventListener('input', () => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                fetchArticles(1);
-            }, 400);
-        });
-
-        sumberFilter.addEventListener('change', () => fetchArticles(1));
-
-        fetchArticles(1);
-    </script>
 </body>
 </html>
