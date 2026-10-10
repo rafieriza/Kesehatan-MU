@@ -1,22 +1,62 @@
 import os
-import math
-from flask import Flask, request, jsonify, render_template
+from datetime import datetime, timedelta
+from flask import Flask, request, render_template
 import mysql.connector
 from dotenv import load_dotenv
 
-# Load local .env if it exists (safe for local development, ignored on Vercel)
 load_dotenv()
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
 def get_db_connection():
+    """Membuat koneksi ke Aiven MySQL dengan timeout aman"""
     return mysql.connector.connect(
         host=os.getenv("DB_HOST"),
         port=int(os.getenv("DB_PORT", 26070)),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME")
+        database=os.getenv("DB_NAME"),
+        connect_timeout=5
     )
+
+def cleanup_old_articles(cursor, conn):
+    """FITUR 3: Auto Clean-up Storage (Hapus artikel > 1 tahun / 365 hari)"""
+    try:
+        one_year_ago = datetime.now() - timedelta(days=365)
+        cleanup_query = "DELETE FROM artikel_kesehatan WHERE published_at < %s OR created_at < %s"
+        cursor.execute(cleanup_query, (one_year_ago, one_year_ago))
+        conn.commit()
+    except Exception as e:
+        print(f"[Auto Cleanup Warning]: {e}")
+
+def get_synonyms_and_keywords(query):
+    """FITUR 2: Smart Search Dictionary (Sinonim & Penanganan Typo Khusus Medis)"""
+    q = query.lower().strip()
+    synonym_map = {
+        'sakit gula': 'diabetes',
+        'diabtes': 'diabetes',
+        'diabet': 'diabetes',
+        'kencing manis': 'diabetes',
+        'paru': 'tbc',
+        'tuberkulosis': 'tbc',
+        'demam berdarah': 'dbd',
+        'dengue': 'dbd',
+        'darah tinggi': 'hipertensi',
+        'tekanan darah': 'hipertensi',
+        'jantung': 'kardiovaskular',
+        'mental': 'depresi',
+        'cemas': 'ansietas',
+        'stres': 'mental',
+        'vaksinasi': 'vaksin',
+        'imunisasi': 'vaksin'
+    }
+    
+    matched_keywords = [q]
+    for key, val in synonym_map.items():
+        if key in q or q in key:
+            matched_keywords.extend([key, val])
+            
+    return list(set(matched_keywords))
 
 @app.route('/')
 def index():
@@ -24,48 +64,64 @@ def index():
     category = request.args.get('category', '').strip()
     sort_by = request.args.get('sort', 'latest').strip()
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    articles = []
+    trending_articles = []
+    db_connected = True
 
-    sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
-    params = []
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-    # Logika Pencarian Kata Kunci
-    if query:
-        sql += " AND (title LIKE %s OR summary LIKE %s)"
-        params.extend([f"%{query}%", f"%{query}%"])
+        # 1. Jalankan Pembersihan Artikel Lama (>1 Tahun)
+        cleanup_old_articles(cursor, conn)
 
-    # Logika Filter Kategori Berdasarkan Kata Kunci
-    if category:
-        category_map = {
-            'penyakit': ['vaksin', 'virus', 'infeksi', 'dbd', 'mpox', 'covid', 'flu', 'demam'],
-            'mental': ['depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi'],
-            'gaya_hidup': ['olahraga', 'tidur', 'rokok', 'hidup', 'gigi', 'kulit'],
-            'nutrisi': ['diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur'],
-            'medis': ['rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'jantung', 'diabetes']
-        }
-        keywords = category_map.get(category, [])
-        if keywords:
-            cat_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in keywords])
-            sql += f" AND ({cat_conditions})"
-            for kw in keywords:
+        # 2. Logika Query Utama
+        sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
+        params = []
+
+        # Smart Search logic
+        if query:
+            search_keywords = get_synonyms_and_keywords(query)
+            search_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in search_keywords])
+            sql += f" AND ({search_conditions})"
+            for kw in search_keywords:
                 params.extend([f"%{kw}%", f"%{kw}%"])
 
-    # Logika Pengurutan (Terbaru vs Trending)
-    if sort_by == 'trending':
-        sql += " ORDER BY id DESC LIMIT 10"
-    else:
-        sql += " ORDER BY published_at DESC, id DESC LIMIT 20"
+        # Category Filtering Logic
+        if category:
+            category_map = {
+                'penyakit': ['vaksin', 'virus', 'infeksi', 'dbd', 'mpox', 'covid', 'flu', 'demam', 'tbc'],
+                'mental': ['depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi', 'ansietas'],
+                'gaya_hidup': ['olahraga', 'tidur', 'rokok', 'hidup', 'gigi', 'kulit', 'fitness'],
+                'nutrisi': ['diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur', 'obesitas'],
+                'medis': ['rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'jantung', 'diabetes', 'hipertensi']
+            }
+            keywords = category_map.get(category, [])
+            if keywords:
+                cat_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in keywords])
+                sql += f" AND ({cat_conditions})"
+                for kw in keywords:
+                    params.extend([f"%{kw}%", f"%{kw}%"])
 
-    cursor.execute(sql, tuple(params))
-    articles = cursor.fetchall()
+        # Sorting logic
+        if sort_by == 'trending':
+            sql += " ORDER BY id DESC LIMIT 10"
+        else:
+            sql += " ORDER BY published_at DESC, id DESC LIMIT 20"
 
-    # Mengambil Top 5 Isu Populer untuk Sidebar Kanan
-    cursor.execute("SELECT * FROM artikel_kesehatan ORDER BY id DESC LIMIT 5")
-    trending_articles = cursor.fetchall()
+        cursor.execute(sql, tuple(params))
+        articles = cursor.fetchall()
 
-    cursor.close()
-    conn.close()
+        # Isu Populer untuk Sidebar
+        cursor.execute("SELECT * FROM artikel_kesehatan ORDER BY id DESC LIMIT 5")
+        trending_articles = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        print(f"[Database Error]: {e}")
+        db_connected = False
 
     return render_template(
         'index.html',
@@ -73,7 +129,8 @@ def index():
         trending_articles=trending_articles,
         search_query=query,
         active_category=category,
-        sort_by=sort_by
+        sort_by=sort_by,
+        db_connected=db_connected
     )
 
 if __name__ == '__main__':
