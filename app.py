@@ -20,19 +20,6 @@ def get_db_connection():
         connect_timeout=5
     )
 
-@app.route('/keep-alive')
-def keep_alive():
-    try:
-        # Buka koneksi menggunakan fungsi yang sudah ada
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        cursor.close()
-        conn.close() # Tutup koneksi setelah selesai
-        return "Database Keep-Alive Sukses!", 200
-    except Exception as e:
-        return f"Error Keep-Alive: {str(e)}", 500
-
 @app.route('/run-scraper')
 def run_scraper():
     """Rute untuk memicu scraper.py secara otomatis"""
