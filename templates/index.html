@@ -101,8 +101,10 @@
                             Kategori: <span class="text-teal-700 capitalize">{{ active_category.replace('_', ' ') }}</span>
                         {% elif sort_by == 'trending' %}
                             Isu Kesehatan Trending
-                        {% else %}
+                        {% elif sort_by == 'latest' %}
                             Isu Kesehatan Terbaru
+                        {% else %}
+                            Artikel Kesehatan Pilihan
                         {% endif %}
                     </h2>
                     {% if search_query or active_category or sort_by == 'trending' %}
@@ -114,7 +116,7 @@
                 {% if active_category %}
                     <p class="text-xs text-gray-500 mt-1 italic">
                         <i class="fa-solid fa-circle-info text-teal-600 mr-1"></i> 
-                        Menampilkan artikel terkait berdasarkan indeks topik otomatis sistem (sebagian artikel dapat muncul di beberapa kategori yang beririsan).
+                        Menampilkan artikel otomatis sistem kategori (sebagian artikel dapat muncul di beberapa kategori yang beririsan).
                     </p>
                 {% endif %}
             </div>
@@ -244,7 +246,30 @@
         <p class="text-[11px] text-gray-500 mt-0.5">Dikembangkan sebagai sistem aggregator isu kesehatan otomatis.</p>
     </footer>
 
-<!-- 6. SCRIPT JAVASCRIPT -->
+<!-- 6. POP-UP WELCOME MODAL -->
+    <div id="welcome-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center transform transition-all scale-100 border border-gray-100">
+            <!-- Ikon / Logo -->
+            <div class="w-16 h-16 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <i class="fa-solid fa-heart-pulse text-3xl"></i>
+            </div>
+            
+            <!-- Judul Sambutan -->
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Selamat Datang di Kesehatan-MU!</h3>
+            
+            <!-- Penjelasan Singkat Web -->
+            <p class="text-gray-600 text-sm mb-6 leading-relaxed">
+                Platform aggregator pintar yang menyajikan ragam isu dan berita kesehatan terkini dari berbagai sumber terpercaya secara otomatis, cepat, dan mudah diakses.
+            </p>
+            
+            <!-- Tombol Tutup / Mulai Jelajah -->
+            <button id="close-modal-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-4 rounded-lg transition shadow-md text-sm">
+                Mulai Jelajahi Berita 🚀
+            </button>
+        </div>
+    </div>
+    
+<!-- 7. SCRIPT JAVASCRIPT -->
     <script>
         const menuBtn = document.getElementById('menu-btn');
         const menuDropdown = document.getElementById('menu-dropdown');
@@ -268,6 +293,16 @@
             if (!categoryDropdownList.classList.contains('hidden')) {
                 categoryDropdownList.classList.add('hidden');
             }
+        });
+        // Logika Pop-up Welcome Modal
+        const welcomeModal = document.getElementById('welcome-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        closeModalBtn.addEventListener('click', () => {
+            welcomeModal.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                welcomeModal.style.display = 'none';
+            }, 300);
         });
     </script>
 </body>
