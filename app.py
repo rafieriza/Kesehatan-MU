@@ -68,6 +68,101 @@ def reset_db():
     except Exception as e:
         return f"GAGAL reset database: {str(e)}", 500
 
+@app.route('/delete-article/<int:article_id>')
+def delete_article(article_id):
+    """Menghapus artikel spesifik yang salah sasaran berdasarkan ID-nya"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM artikel_kesehatan WHERE id = %s", (article_id,))
+        conn.commit()
+        affected_rows = cursor.rowcount
+        cursor.close()
+        conn.close()
+        
+        if affected_rows > 0:
+            return f"SUKSES: Artikel dengan ID {article_id} berhasil dihapus dari database!", 200
+        else:
+            return f"INFO: Artikel dengan ID {article_id} tidak ditemukan (mungkin sudah terhapus).",  404
+    except Exception as e:
+        return f"GAGAL menghapus artikel: {str(e)}", 500
+
+@app.route('/admin-artikel')
+def admin_artikel():
+    """Halaman panel admin sederhana untuk melihat dan menghapus artikel yang salah sasaran"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, title, source, published_at FROM artikel_kesehatan ORDER BY id DESC LIMIT 50")
+        articles = cursor.fetchall()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        articles = []
+        print(f"[Admin Error]: {e}")
+
+    # Tampilan HTML sederhana langsung dari Flask (tanpa repot ubah file template)
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <title>Panel Admin - Kesehatan-MU</title>
+        <style>
+            body { font-family: Arial, sans-serif; background: #f4f6f8; padding: 20px; color: #333; }
+            h2 { color: #0d9488; }
+            table { width: 100%; border-collapse: collapse; background: white; margin-top: 15px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+            th { background-color: #0d9488; color: white; }
+            tr:hover { background-color: #f9fafb; }
+            .btn-hapus { background-color: #ef4444; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px; }
+            .btn-hapus:hover { background-color: #dc2626; }
+            .back-link { display: inline-block; margin-bottom: 15px; color: #0d9488; text-decoration: none; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <a href="/" class="back-link">&larr; Kembali ke Beranda Kesehatan-MU</a>
+        <h2>Panel Moderasi Artikel (Hapus Artikel Nyasar)</h2>
+        <p>Klik tombol merah di samping artikel yang bukan kategori kesehatan untuk langsung menghapusnya.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Judul Artikel</th>
+                    <th>Sumber</th>
+                    <th>Tanggal Terbit</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+    
+    if articles:
+        for art in articles:
+            html_content += f"""
+                <tr>
+                    <td>{art['id']}</td>
+                    <td>{art['title']}</td>
+                    <td><b>{art['source']}</b></td>
+                    <td>{art['published_at']}</td>
+                    <td><a href="/delete-article/{art['id']}" class="btn-hapus" onclick="return confirm('Yakin mau hapus artikel ini?')">Hapus</a></td>
+                </tr>
+            """
+    else:
+        html_content += """
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #777;">Tidak ada artikel atau database gagal dimuat.</td>
+                </tr>
+        """
+        
+    html_content += """
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+    return html_content
+
 @app.route('/init-db')
 def init_db():
     """Rute sekali pakai untuk membuat tabel database di Aiven MySQL"""
