@@ -56,7 +56,7 @@ def is_health_article(title):
         # --- KULINER, MAKANAN, & GAYA HIDUP ---
         'resep', 'kuliner', 'restoran', 'makanan', 'minuman', 'kafe', 'cafe', 'menu', 
         'masak', 'memasak', 'lezat', 'enak', 'camilan', 'snack', 'jajanan', 'mukbang',
-        'hidangan', 'bumbu', 'dapur', 'warung', 'kedai', 'Review Makanan',
+        'hidangan', 'bumbu', 'dapur', 'warung', 'kedai', 'Review Makanan', 'liburan', 'kebanjiran', 'hiburan',
 
         # --- FASHION, KECANTIKAN, & SKINCARE ---
         'gaun', 'fashion', 'outfit', 'skincare', 'makeup', 'kosmetik', 'gaya', 'tren',
