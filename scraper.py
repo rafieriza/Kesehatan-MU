@@ -61,12 +61,12 @@ def is_health_article(title):
         # --- FASHION, KECANTIKAN, & SKINCARE ---
         'gaun', 'fashion', 'outfit', 'skincare', 'makeup', 'kosmetik', 'gaya', 'tren',
         'baju', 'pakaian', 'model', 'peragaan', 'lipstik', 'skincare rutin', 'glowing',
-        'gaya rambut', 'potongan rambut', 'parfum', 'aksesoris', 'OOTD',
+        'gaya rambut', 'potongan rambut', 'parfum', 'aksesoris', 'OOTD', 'timnas',
 
         # --- WISATA, TRAVEL, & TRANSPORTASI ---
         'wisata', 'destinasi', 'hotel', 'tiket', 'pariwisata', 'bandara', 'pesawat',
         'liburan', 'traveling', 'resort', 'penginapan', 'pantai', 'gunung', 'rute',
-        'stasiun', 'mudik', 'koper', 'oleh-oleh', 'backpacker',
+        'stasiun', 'mudik', 'koper', 'oleh-oleh', 'backpacker', 'rumah', 'apart', 'apartemen',
 
         # --- HIBURAN, FILM, MUSIK, & GOSIP (ENTERTAINMENT) ---
         'konser', 'film', 'bioskop', 'sinopsis', 'aktor', 'aktris', 'seleb', 'selebriti',
@@ -75,12 +75,12 @@ def is_health_article(title):
 
         # --- ASTROLOGI, HOBI, & HIBURAN RINGAN ---
         'zodiak', 'ramalan', 'horoskop', 'shio', 'bintang', 'keberuntungan', 'primbon',
-        'ikan', 'kucing', 'anjing', 'hewan peliharaan', 'pet', 'tanaman hias', 'kebun',
-        'otomotif', 'mobil', 'motor', 'game', 'gaming', 'esports', 'gadget', 'hp',
+        'ikan', 'kucing', 'anjing', 'hewan peliharaan', 'pet', 'tanaman hias', 'kebun', 'pengunjung', 'wisatawan', 'konsumen'
+        'otomotif', 'mobil', 'motor', 'game', 'gaming', 'esports', 'gadget', 'hp', 'pengunjung', 'pilot', 'pramugari', 'pramugara',
 
         # --- POLITIK & BISNIS NON-MEDIS (Untuk mencegah spam berita reguler) ---
-        'saham', 'investasi', 'bisnis', 'ekonomi', 'rupiah', 'dolar', 'politik', 'pemilu',
-        'pilkada', 'dpr', 'presiden', 'menteri', 'korupsi', 'kriminal', 'rampok', 'begal'
+        'saham', 'investasi', 'bisnis', 'ekonomi', 'rupiah', 'dolar', 'politik', 'pemilu', 'daerah', 'pemda', 'teknologi', 'gubernur'
+        'pilkada', 'dpr', 'presiden', 'menteri', 'korupsi', 'kriminal', 'rampok', 'begal', 'jalan', 'partai', 'kejahatan', 'pemprov'
     ]
     if any(ex in text for ex in exclude_keywords):
         return False
@@ -88,15 +88,15 @@ def is_health_article(title):
     # Kata Kunci Positif (Wajib ada unsur kesehatan/medis)
     health_keywords = [
         # --- FAKILITAS, TENAGA, & ADMINISTRASI MEDIS ---
-        'kesehatan', 'sehat', 'sakit', 'gejala', 'medis', 'klinik', 'puskesmas', 'rs', 'rumah sakit', 
-        'dokter', 'psikolog', 'psikologi', 'pasien', 'bpjs', 'perawat', 'bidan', 'apotek', 'laboratorium',
-        'faskes', 'igd', 'icu', 'rawat inap', 'rawat jalan', 'rekam medis', 'rujukan', 'diagnosis', 
-        'prosedur', 'operasi', 'bedah', 'terapi', 'rehabilitasi', 'ambulan', 'screening',
+        'kesehatan', 'sehat', 'sakit', 'gejala', 'medis', 'klinik', 'puskesmas', 'rs', 'rumah sakit', 'dokter', 'kedokteran',
+        'dokter', 'psikolog', 'psikologi', 'pasien', 'bpjs', 'perawat', 'bidan', 'apotek', 'laboratorium', 'donor darah',
+        'faskes', 'igd', 'icu', 'rawat inap', 'rawat jalan', 'rekam medis', 'rujukan', 'diagnosis', 'obat', 'farmasi',
+        'prosedur', 'operasi', 'bedah', 'terapi obat', 'rehabilitasi', 'ambulan', 'screening', 'diagnosa', 'onkolog',
     
         # --- GEJALA & KONDISI UMUM ---
         'infeksi', 'demam', 'cedera', 'sariawan', 'stunting', 'luka', 'nyeri', 'pusing', 'sakit kepala',
         'mual', 'muntah', 'diare', 'batuk', 'pilek', 'sesak napas', 'alergi', 'ruam', 'bengkak',
-        'kelelahan', 'lemas', 'insomnia', 'kejang', 'pingsan', 'radang', 'inflamasi',
+        'kelelahan', 'lemas', 'insomnia', 'kejang', 'pingsan', 'radang', 'inflamasi', 'sel', 'jaringan', 'diagnosis',
     
         # --- PENYAKIT INFEKSI (VIRUS, BAKTERI, PARASIT) ---
         'virus', 'bakteri', 'flu', 'dbd', 'demam berdarah', 'covid', 'mpox', 'cacar', 'tbc', 'tuberculosis',
@@ -107,7 +107,7 @@ def is_health_article(title):
         'kanker', 'tumor', 'diabetes', 'kencing manis', 'jantung', 'stroke', 'hipertensi', 'darah tinggi',
         'kolesterol', 'asam urat', 'kista', 'miom', 'gagal ginjal', 'batu ginjal', 'asma', 'gout',
         'osteoporosis', 'rematik', 'artritis', 'autoimun', 'lupus', 'alzheimer', 'demensia', 'parkinson',
-        'epilepsi', 'amandel', 'sinusitis', 'varises', 'hernia',
+        'epilepsi', 'amandel', 'sinusitis', 'varises', 'hernia', 'bakteri', 'virus', 'kronis',
     
         # --- KESEHATAN ORGAN & SPESIALISTIK ---
         # Pencernaan & Ekskresi
@@ -176,12 +176,12 @@ def scrape_kesehatan():
             "url": "https://health.detik.com/berita-detikhealth/rss"
         },
         {
-            "name": "CNBC Indonesia",
-            "url": "https://www.cnbcindonesia.com/news/rss"
+            "name": "Medical Xpress",
+            "url": "https://medicalxpress.com/rss-feed/"
         },
                 {
-            "name": "Tempo co",
-            "url": "https://rss.tempo.co/nasional"
+            "name": "ScienceDaily",
+            "url": "https://www.sciencedaily.com/rss/top/health.xml"
         },
                 {
             "name": "Sindonews Health",
