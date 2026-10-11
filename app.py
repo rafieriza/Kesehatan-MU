@@ -20,15 +20,25 @@ def get_db_connection():
         connect_timeout=5
     )
 
-@app.route('/run-scraper')
-def run_scraper():
-    """Rute untuk memicu scraper.py secara otomatis"""
+@app.route('/run-scraper-1')
+def run_scraper_1():
+    """Rute Batch 1 untuk memicu scraper bagian pertama"""
     try:
         from scraper import scrape_kesehatan
-        scrape_kesehatan()
-        return "SUKSES: Proses RSS scraping berhasil dijalankan!", 200
+        scrape_kesehatan(batch=1)
+        return "SUKSES: RSS Scraping Batch 1 Berhasil!", 200
     except Exception as e:
-        return f"SCRAPER NOTICE: Berjalan dengan kendala: {str(e)}", 200
+        return f"SCRAPER NOTICE (Batch 1): {str(e)}", 200
+
+@app.route('/run-scraper-2')
+def run_scraper_2():
+    """Rute Batch 2 untuk memicu scraper bagian kedua"""
+    try:
+        from scraper import scrape_kesehatan
+        scrape_kesehatan(batch=2)
+        return "SUKSES: RSS Scraping Batch 2 Berhasil!", 200
+    except Exception as e:
+        return f"SCRAPER NOTICE (Batch 2): {str(e)}", 200
 
 @app.route('/keep-alive')
 def keep_alive():
@@ -308,3 +318,4 @@ def index():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    
