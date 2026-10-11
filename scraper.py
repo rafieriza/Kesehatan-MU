@@ -265,7 +265,7 @@ def scrape_kompas(cursor):
     return inserted_kompas
 
 def scrape_detik(cursor):
-    """Fungsi HTML Scraping khusus untuk mengambil artikel dari Detik Health"""
+    """Fungsi HTML Scraping khusus untuk mengambil artikel dari Detik Health dengan penanganan gambar lazy-load"""
     print("[SCRAPER] Memulai proses HTML scraping Detik Health...")
     url = "https://health.detik.com"
     headers = {
@@ -280,8 +280,6 @@ def scrape_detik(cursor):
             return 0
 
         soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Detik biasanya membungkus daftar artikel dalam card list atau artikel terikat tag khusus
         article_items = soup.select('article, div.list-content, div.media__text')
         
         if not article_items:
@@ -300,13 +298,12 @@ def scrape_detik(cursor):
                         continue
                     link = a_elem.get('href', '').strip()
 
-                # Filter link valid milik detik health (biasanya mengandung detik.com/health atau /detikhealth)
-                if not link or 'detik.com' not in link or ('/d-' in link or 'health.detik.com' in link):
-                    # Pastikan bukan link halaman statis atau iklan
-                    pass
-                else:
-                    if 'detik.com' not in link:
-                        continue
+                if not link or 'detik.com' not in link:
+                    continue
+
+                # FILTER BARU: Buang halaman tag, indeks, foto, atau video
+                if '/tag/' in link or '/indeks' in link or '/foto/' in link or '/video/' in link:
+                    continue
 
                 if link in processed_urls:
                     continue
@@ -328,11 +325,20 @@ def scrape_detik(cursor):
                 if len(summary) > 250:
                     summary = summary[:250] + "..."
 
-                # Ambil Gambar
+                # PENGAMBILAN GAMBAR LEBIH AMAN (Mendeteksi berbagai atribut lazy loading Detik)
                 img_elem = item.find('img')
                 image_url = ""
                 if img_elem:
-                    image_url = img_elem.get('src') or img_elem.get('data-src', '')
+                    image_url = (
+                        img_elem.get('src') or 
+                        img_elem.get('data-src') or 
+                        img_elem.get('data-lazy-src') or 
+                        img_elem.get('data-original') or 
+                        ""
+                    )
+                    # Pastikan jika URL gambar berupa relative path, diubah jadi absolute
+                    if image_url and not image_url.startswith('http'):
+                        image_url = ""
 
                 published_at = datetime.now()
 
@@ -353,7 +359,7 @@ def scrape_detik(cursor):
 
     print(f"[SCRAPER] Berhasil menyerap {inserted_detik} artikel dari Detik Health.")
     return inserted_detik
-
+    
 def scrape_kesehatan():
     print("[SCRAPER] Memulai proses penarikan berita kesehatan...")
     init_db()
