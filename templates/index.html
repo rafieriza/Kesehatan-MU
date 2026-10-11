@@ -42,17 +42,24 @@
             <nav id="menu-dropdown" class="hidden w-full md:flex md:w-auto flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-1 font-medium text-sm pt-2 md:pt-0 border-t md:border-none border-teal-800">
                 <a href="/" class="px-3 py-2 rounded {% if not active_category and sort_by != 'trending' and not search_query %}bg-teal-800 text-white font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Home</a>
                 <a href="/?sort=latest" class="px-3 py-2 rounded {% if sort_by == 'latest' and not active_category and not search_query %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Isu Terbaru</a>
+               
+                <!-- DROPDOWN KATEGORI -->
                 <div class="relative group">
-                    <button class="px-3 py-2 rounded hover:bg-teal-800 transition flex items-center space-x-1 w-full text-left md:text-center focus:outline-none">
+                    <!-- TAMBAHKAN id="category-menu-btn" di sini -->
+                    <button id="category-menu-btn" class="px-3 py-2 rounded hover:bg-teal-800 transition flex items-center space-x-1 w-full text-left md:text-center focus:outline-none">
                         <span>Kategori</span>
                         <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
                     </button>
-                    <div class="hidden md:group-hover:block absolute left-0 md:left-auto mt-1 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                        <a href="/?category=penyakit" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🦠 Penyakit Menular</a>
+                    <!-- TAMBAHKAN id="category-dropdown-list" dan GANTI class-nya jadi support klik HP -->
+                    <div id="category-dropdown-list" class="hidden md:group-hover:block absolute left-0 md:left-auto mt-1 w-52 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                        <a href="/?category=penyakit_menular" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🦠 Penyakit Menular</a>
+                        <a href="/?category=penyakit_kronis" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🫀 Penyakit Kronis</a>
                         <a href="/?category=mental" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🧠 Kesehatan Mental</a>
                         <a href="/?category=gaya_hidup" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🏃 Gaya Hidup Sehat</a>
                         <a href="/?category=nutrisi" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🥗 Nutrisi & Diet</a>
                         <a href="/?category=medis" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🩺 Berita Medis</a>
+                        <a href="/?category=ibu_anak" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">👶 Ibu & Anak</a>
+                        <a href="/?category=kebijakan_kesehatan" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🏛️ Kebijakan Kesehatan</a>
                     </div>
                 </div>
                 <a href="/?sort=trending" class="px-3 py-2 rounded {% if sort_by == 'trending' %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Trending</a>
@@ -182,11 +189,14 @@
                 <div id="kategori" class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
                     <h3 class="font-bold text-gray-800 text-base mb-3 border-b pb-2">Kategori Isu Kesehatan</h3>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="/?category=penyakit" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Penyakit Menular</a></li>
+                        <li><a href="/?category=penyakit_menular" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Penyakit Menular</a></li>
+                        <li><a href="/?category=penyakit_kronis" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Penyakit Kronis</a></li>
                         <li><a href="/?category=mental" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Kesehatan Mental</a></li>
                         <li><a href="/?category=gaya_hidup" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Gaya Hidup Sehat</a></li>
                         <li><a href="/?category=nutrisi" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Nutrisi & Diet</a></li>
                         <li><a href="/?category=medis" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Berita Medis</a></li>
+                        <li><a href="/?category=ibu_anak" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Ibu & Anak</a></li>
+                        <li><a href="/?category=kebijakan_kesehatan" class="text-teal-700 hover:text-teal-900 hover:underline font-medium block">Kebijakan Kesehatan</a></li>
                     </ul>
                 </div>
 
@@ -224,14 +234,16 @@
         <p class="text-[11px] text-gray-500 mt-0.5">Dikembangkan sebagai sistem aggregator isu kesehatan otomatis.</p>
     </footer>
 
-    <!-- 6. SCRIPT JAVASCRIPT UNTUK HAMBURGER MENU -->
+<!-- 6. SCRIPT JAVASCRIPT -->
     <script>
         const menuBtn = document.getElementById('menu-btn');
         const menuDropdown = document.getElementById('menu-dropdown');
 
+        // Toggle menu hamburger utama di HP
         menuBtn.addEventListener('click', () => {
             menuDropdown.classList.toggle('hidden');
         });
+
         // Toggle dropdown kategori khusus klik di HP
         const categoryMenuBtn = document.getElementById('category-menu-btn');
         const categoryDropdownList = document.getElementById('category-dropdown-list');
@@ -241,7 +253,7 @@
             categoryDropdownList.classList.toggle('hidden');
         });
 
-        // Tutup dropdown kalau klik di luar
+        // Tutup dropdown kalau area luar diklik
         window.addEventListener('click', () => {
             if (!categoryDropdownList.classList.contains('hidden')) {
                 categoryDropdownList.classList.add('hidden');
