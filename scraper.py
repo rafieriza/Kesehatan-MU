@@ -416,6 +416,20 @@ def scrape_kesehatan():
     except Exception as e:
         print(f"Gagal menjalankan Alodokter scraper: {e}")
 
+    # 3. Jalankan HTML Scraping Kompas Health (Ditambahkan agar tereksekusi)
+    try:
+        kompas_count = scrape_kompas(cursor)
+        inserted_count += kompas_count
+    except Exception as e:
+        print(f"Gagal menjalankan Kompas scraper: {e}")
+
+    # 4. Jalankan HTML Scraping Detik Health (Ditambahkan agar tereksekusi)
+    try:
+        detik_count = scrape_detik(cursor)
+        inserted_count += detik_count
+    except Exception as e:
+        print(f"Gagal menjalankan Detik scraper: {e}")
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -426,4 +440,3 @@ def scrape_kesehatan():
 
 if __name__ == "__main__":
     scrape_kesehatan()
-    
