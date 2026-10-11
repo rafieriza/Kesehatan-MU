@@ -92,7 +92,8 @@
             
             <!-- KOLOM KIRI (3/4): Grid Kartu Berita -->
             <div class="lg:col-span-3">
-                <div class="flex items-center justify-between mb-6 border-b pb-2 border-gray-200">
+            <div class="mb-6 border-b pb-3 border-gray-200">
+                <div class="flex items-center justify-between">
                     <h2 class="text-xl md:text-2xl font-bold text-gray-800">
                         {% if search_query %}
                             Hasil Pencarian: <span class="text-teal-700">"{{ search_query }}"</span>
@@ -108,6 +109,15 @@
                         <a href="/" class="text-xs text-teal-600 hover:underline font-semibold">Tampilkan Semua</a>
                     {% endif %}
                 </div>
+            
+                <!-- Keterangan kecil khusus halaman kategori -->
+                {% if active_category %}
+                    <p class="text-xs text-gray-500 mt-1 italic">
+                        <i class="fa-solid fa-circle-info text-teal-600 mr-1"></i> 
+                        Menampilkan artikel terkait berdasarkan indeks topik otomatis sistem (sebagian artikel dapat muncul di beberapa kategori yang beririsan).
+                    </p>
+                {% endif %}
+            </div>
 
                 {% if articles %}
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
