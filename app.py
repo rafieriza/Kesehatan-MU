@@ -253,8 +253,8 @@ def index():
             # Sorting logic yang disesuaikan
             if sort_by == 'trending':
                 sql += " ORDER BY id DESC LIMIT 10"
-            elif sort_by == 'latest':
-                # Isu Terbaru: Berdasarkan urutan waktu masuk paling fresh
+            elif sort_by == 'latest'or category:
+                # Isu Terbaru ATAU saat sedang membuka Kategori: Berdasarkan urutan waktu masuk paling fresh
                 sql += " ORDER BY published_at DESC, id DESC LIMIT 20"
             else:
                 # Home Utama: Diambil secara acak (Random) dari database
