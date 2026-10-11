@@ -260,6 +260,8 @@ def scrape_kesehatan():
                 # --- TAMBAHKAN INI DI BAWAHNYA UTK UPGRADE KE HD ---
                 if "scx1.b-cdn.net" in image_url and "/tmb/" in image_url:
                     image_url = re.sub(r'/tmb/\d+/', '/', image_url)
+                if image_url:
+                    print(f"[DEBUG IMAGE] {src['name']} -> {image_url}")
 
                 published_at = parse_date(entry)
 
