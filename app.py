@@ -20,6 +20,17 @@ def get_db_connection():
         connect_timeout=5
     )
 
+@app.route('/keep-alive')
+def keep_alive():
+    try:
+        # Kueri super ringan untuk membangunkan koneksi database Aiven.io
+        cursor = db.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        return "Database Keep-Alive Sukses!", 200
+    except Exception as e:
+        return f"Error Keep-Alive: {str(e)}", 500
+
 @app.route('/run-scraper')
 def run_scraper():
     """Rute untuk memicu scraper.py secara otomatis"""
