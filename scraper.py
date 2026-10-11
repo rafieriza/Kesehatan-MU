@@ -220,9 +220,11 @@ def scrape_kesehatan():
                 if not summary:
                     summary = ""
 
-                # Ambil gambar thumbnail jika tersedia
+                # Ambil gambar thumbnail jika tersedia (Mendukung media:thumbnail & media_content)
                 image_url = ""
-                if hasattr(entry, 'media_content') and entry.media_content:
+                if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
+                    image_url = entry.media_thumbnail[0].get('url', '')
+                elif hasattr(entry, 'media_content') and entry.media_content:
                     image_url = entry.media_content[0].get('url', '')
                 elif hasattr(entry, 'enclosures') and entry.enclosures:
                     image_url = entry.enclosures[0].get('href', '')
