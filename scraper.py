@@ -176,6 +176,184 @@ def scrape_alodokter(cursor):
     print(f"[SCRAPER] Berhasil menyerap {inserted_alodokter} artikel dari Alodokter.")
     return inserted_alodokter
 
+def scrape_kompas(cursor):
+    """Fungsi HTML Scraping khusus untuk mengambil artikel dari Kompas Health"""
+    print("[SCRAPER] Memulai proses HTML scraping Kompas Health...")
+    url = "https://health.kompas.com"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    inserted_kompas = 0
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"[Error] Gagal mengakses Kompas Health, Status Code: {response.status_code}")
+            return 0
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Cari semua elemen artikel (biasanya Kompas menggunakan class article__item atau tag link di rubrik)
+        article_items = soup.select('div.article__item, div.articleItem, .neath-item')
+        
+        # Fallback jika selector spesifik tidak ketemu, ambil semua tag 'a' yang mengarah ke health.kompas.com
+        if not article_items:
+            article_items = soup.find_all('a', href=True)
+
+        processed_urls = set()
+
+        for item in article_items:
+            try:
+                # Jika item berupa tag <a> langsung atau dibungkus dalam div
+                if item.name == 'a':
+                    link = item.get('href', '').strip()
+                    a_elem = item
+                else:
+                    a_elem = item.find('a', href=True)
+                    if not a_elem:
+                        continue
+                    link = a_elem.get('href', '').strip()
+
+                # Filter link valid milik kompas health
+                if not link or 'kompas.com' not in link or '/read/' not in link:
+                    continue
+
+                if link in processed_urls:
+                    continue
+                processed_urls.add(link)
+
+                # Ambil Judul
+                title_elem = item.find(['h2', 'h3', 'h4']) if item.name != 'a' else item
+                title = title_elem.get_text(strip=True) if title_elem else a_elem.get_text(strip=True)
+
+                if not title or len(title) < 15:
+                    continue
+
+                # Ambil Ringkasan
+                summary = title
+                p_elem = item.find('p')
+                if p_elem:
+                    summary = p_elem.get_text(strip=True)
+                
+                if len(summary) > 250:
+                    summary = summary[:250] + "..."
+
+                # Ambil Gambar
+                img_elem = item.find('img')
+                image_url = ""
+                if img_elem:
+                    image_url = img_elem.get('data-src') or img_elem.get('src', '')
+
+                published_at = datetime.now()
+
+                # Masukkan ke database jika lolos filter kesehatan
+                if title and link and is_health_article(title):
+                    sql = """
+                    INSERT IGNORE INTO artikel_kesehatan 
+                    (title, summary, source, url, image_url, published_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(sql, (title, summary, "Kompas Health", link, image_url, published_at))
+                    inserted_kompas += cursor.rowcount
+            except Exception as item_err:
+                continue
+
+    except Exception as e:
+        print(f"[Scraper Exception (Kompas)]: {e}")
+
+    print(f"[SCRAPER] Berhasil menyerap {inserted_kompas} artikel dari Kompas Health.")
+    return inserted_kompas
+
+def scrape_detik(cursor):
+    """Fungsi HTML Scraping khusus untuk mengambil artikel dari Detik Health"""
+    print("[SCRAPER] Memulai proses HTML scraping Detik Health...")
+    url = "https://health.detik.com"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    inserted_detik = 0
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"[Error] Gagal mengakses Detik Health, Status Code: {response.status_code}")
+            return 0
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Detik biasanya membungkus daftar artikel dalam card list atau artikel terikat tag khusus
+        article_items = soup.select('article, div.list-content, div.media__text')
+        
+        if not article_items:
+            article_items = soup.find_all('a', href=True)
+
+        processed_urls = set()
+
+        for item in article_items:
+            try:
+                if item.name == 'a':
+                    link = item.get('href', '').strip()
+                    a_elem = item
+                else:
+                    a_elem = item.find('a', href=True)
+                    if not a_elem:
+                        continue
+                    link = a_elem.get('href', '').strip()
+
+                # Filter link valid milik detik health (biasanya mengandung detik.com/health atau /detikhealth)
+                if not link or 'detik.com' not in link or ('/d-' in link or 'health.detik.com' in link):
+                    # Pastikan bukan link halaman statis atau iklan
+                    pass
+                else:
+                    if 'detik.com' not in link:
+                        continue
+
+                if link in processed_urls:
+                    continue
+                processed_urls.add(link)
+
+                # Ambil Judul
+                title_elem = item.find(['h2', 'h3', 'h4']) if item.name != 'a' else item
+                title = title_elem.get_text(strip=True) if title_elem else a_elem.get_text(strip=True)
+
+                if not title or len(title) < 15 or title.lower() in ['baca selengkapnya', 'selanjutnya']:
+                    continue
+
+                # Ambil Ringkasan
+                summary = title
+                p_elem = item.find('p')
+                if p_elem:
+                    summary = p_elem.get_text(strip=True)
+                
+                if len(summary) > 250:
+                    summary = summary[:250] + "..."
+
+                # Ambil Gambar
+                img_elem = item.find('img')
+                image_url = ""
+                if img_elem:
+                    image_url = img_elem.get('src') or img_elem.get('data-src', '')
+
+                published_at = datetime.now()
+
+                # Masukkan ke database jika lolos filter kesehatan
+                if title and link and is_health_article(title):
+                    sql = """
+                    INSERT IGNORE INTO artikel_kesehatan 
+                    (title, summary, source, url, image_url, published_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(sql, (title, summary, "Detik Health", link, image_url, published_at))
+                    inserted_detik += cursor.rowcount
+            except Exception as item_err:
+                continue
+
+    except Exception as e:
+        print(f"[Scraper Exception (Detik)]: {e}")
+
+    print(f"[SCRAPER] Berhasil menyerap {inserted_detik} artikel dari Detik Health.")
+    return inserted_detik
+
 def scrape_kesehatan():
     print("[SCRAPER] Memulai proses penarikan berita kesehatan...")
     init_db()
