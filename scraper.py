@@ -253,11 +253,13 @@ def scrape_kesehatan():
                     
                 # 5. Ekstraksi manual dari teks description/summary jika masih kosong
                 if not image_url and ('summary' in entry or 'description' in entry):
-                    import re
                     raw_html = entry.get('summary', '') or entry.get('description', '')
                     img_match = re.search(r'<img[^>]+src="([^">]+)"', raw_html)
                     if img_match:
                         image_url = img_match.group(1)
+                # --- TAMBAHKAN INI DI BAWAHNYA UTK UPGRADE KE HD ---
+                if "scx1.b-cdn.net" in image_url and "/tmb/" in image_url:
+                    image_url = image_url.replace("/tmb/", "/")
 
                 published_at = parse_date(entry)
 
