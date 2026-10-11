@@ -110,11 +110,69 @@ def get_synonyms_and_keywords(query):
             
     return list(set(matched_keywords))
 
+# Master kamus kategori dengan penambahan filter baru
+CATEGORY_MAP = {
+    # --- BARU: PENYAKIT MENULAR (Wabah, Infeksi, Virus, Bakteri) ---
+    'penyakit_menular': [
+        'vaksin', 'virus', 'infeksi', 'dbd', 'demam berdarah', 'mpox', 'covid', 'flu', 'demam', 
+        'tbc', 'tuberculosis', 'cacar', 'tifus', 'tipes', 'malaria', 'hiv', 'aids', 'hepatitis', 
+        'tetanus', 'pneumonia', 'ispa', 'rabies', 'leptospirosis', 'bakteri', 'wabah', 'pandemi', 
+        'endemi', 'menular', 'penularan', 'tertular', 'kusta', 'scabies', 'kudis', 'cacingan',
+        'anthrax', 'flu burung', 'chikungunya', 'zoonosis', 'klaster'
+    ],
+
+    # --- BARU: PENYAKIT TIDAK MENULAR / KRONIS ---
+    'penyakit_kronis': [
+        'kanker', 'tumor', 'diabetes', 'kencing manis', 'jantung', 'stroke', 'hipertensi', 
+        'darah tinggi', 'kolesterol', 'asam urat', 'kista', 'miom', 'gagal ginjal', 'batu ginjal', 
+        'asma', 'gout', 'osteoporosis', 'rematik', 'artritis', 'autoimun', 'lupus', 'alzheimer', 
+        'demensia', 'parkinson', 'epilepsi', 'amandel', 'sinusitis', 'varises', 'hernia', 
+        'pembuluh darah', 'kronis'
+    ],
+    
+    'mental': [
+        'depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi', 'ansietas', 'anxiety', 'trauma', 
+        'skizofrenia', 'bipolar', 'autisme', 'adhd', 'panic attack', 'halusinasi', 'psikiater', 
+        'psikolog', 'mental health', 'emosi', 'burnout', 'tekanan batin'
+    ],
+    
+    'gaya_hidup': [
+        'olahraga', 'tidur', 'rokok', 'hidup', 'gigi', 'kulit', 'fitness', 'insomnia', 'jerawat', 
+        'dermatitis', 'eksim', 'karies', 'plak gigi', 'gusi', 'aerobik', 'gym', 'jalan kaki', 
+        'sepeda', 'vape', 'alkohol', 'begadang', 'gaya hidup', 'kebugaran', 'sedentari'
+    ],
+    
+    'nutrisi': [
+        'diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur', 'obesitas', 'kalori', 
+        'kegemukan', 'karbohidrat', 'protein', 'lemak', 'serat', 'suplemen', 'hidrasi', 'air putih', 
+        'stunting', 'kurang gizi', 'malnutrisi', 'gula darah', 'puasa'
+    ],
+    
+    'medis': [
+        'rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'klinik', 'puskesmas', 
+        'perawat', 'bidan', 'apotek', 'laboratorium', 'faskes', 'igd', 'icu', 'rawat inap', 
+        'rawat jalan', 'rekam medis', 'rujukan', 'diagnosis', 'bedah', 'terapi', 'rehabilitasi', 
+        'ambulan', 'screening', 'antibiotik', 'resep dokter', 'dosis'
+    ],
+
+    'ibu_anak': [
+        'kehamilan', 'hamil', 'janin', 'kandungan', 'melahirkan', 'persalinan', 'nifas', 'asi', 
+        'menyusui', 'kb', 'kontrasepsi', 'kespro', 'menstruasi', 'haid', 'pms', 'kesuburan', 
+        'infertil', 'pcos', 'pediatri', 'tumbuh kembang', 'imunisasi', 'balita', 'bayi', 'anak'
+    ],
+    
+    'kebijakan_kesehatan': [
+        'bpjs', 'kemenkes', 'menkes', 'jkn', 'kis', 'faskes 1', 'iuran', 'klaim rs', 'subsidi', 
+        'regulasi', 'pemerintah', 'anggaran kesehatan', 'kebijakan medis'
+    ]
+}
+
 @app.route('/')
 def index():
     query = request.args.get('q', '').strip()
     category = request.args.get('category', '').strip()
-    sort_by = request.args.get('sort', 'latest').strip()
+    # Default sort diubah ke 'random' untuk halaman Home
+    sort_by = request.args.get('sort', 'random').strip()
 
     articles = []
     trending_articles = []
@@ -185,39 +243,29 @@ def index():
 
             # Category Filtering Logic
             if category:
-                category_map = {
-                    'penyakit': ['vaksin', 'virus', 'infeksi', 'dbd', 'mpox', 'covid', 'flu', 'demam', 'tbc'],
-                    'mental': ['depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi', 'ansietas'],
-                    'gaya_hidup': ['olahraga', 'tidur', 'rokok', 'hidup', 'gigi', 'kulit', 'fitness'],
-                    'nutrisi': ['diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur', 'obesitas'],
-                    'medis': ['rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'jantung', 'diabetes', 'hipertensi']
-                }
-                keywords = category_map.get(category, [])
+                keywords = CATEGORY_MAP.get(category, [])
                 if keywords:
                     cat_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in keywords])
                     sql += f" AND ({cat_conditions})"
                     for kw in keywords:
                         params.extend([f"%{kw}%", f"%{kw}%"])
 
-            # Sorting logic
+            # Sorting logic yang disesuaikan
             if sort_by == 'trending':
                 sql += " ORDER BY id DESC LIMIT 10"
-            else:
+            elif sort_by == 'latest':
+                # Isu Terbaru: Berdasarkan urutan waktu masuk paling fresh
                 sql += " ORDER BY published_at DESC, id DESC LIMIT 20"
+            else:
+                # Home Utama: Diambil secara acak (Random) dari database
+                sql += " ORDER BY RAND() LIMIT 20"
 
             cursor.execute(sql, tuple(params))
             articles = cursor.fetchall()
 
         # Jika user melakukan pencarian dan sekaligus memilih kategori, filter lagi hasilnya
         if query and category:
-            category_map = {
-                'penyakit': ['vaksin', 'virus', 'infeksi', 'dbd', 'mpox', 'covid', 'flu', 'demam', 'tbc'],
-                'mental': ['depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi', 'ansietas'],
-                'gaya_hidup': ['olahraga', 'tidur', 'rokok', 'hidup', 'gigi', 'kulit', 'fitness'],
-                'nutrisi': ['diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur', 'obesitas'],
-                'medis': ['rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'jantung', 'diabetes', 'hipertensi']
-            }
-            cat_keywords = category_map.get(category, [])
+            cat_keywords = CATEGORY_MAP.get(category, [])
             articles = [art for art in articles if any(ck in f"{art['title']} {art['summary']}".lower() for ck in cat_keywords)]
 
         # Sorting manual khusus hasil pencarian gabungan
