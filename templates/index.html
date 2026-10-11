@@ -259,12 +259,12 @@
             
             <!-- Penjelasan Singkat Web -->
             <p class="text-gray-600 text-sm mb-6 leading-relaxed">
-                Platform aggregator pintar yang menyajikan ragam isu dan berita kesehatan terkini dari berbagai sumber terpercaya secara otomatis, cepat, dan mudah diakses.
+                Platform aggregator pintar yang menyajikan ragam isu dan artikel kesehatan terkini dari berbagai sumber terpercaya secara otomatis, cepat, dan mudah diakses.
             </p>
             
             <!-- Tombol Tutup / Mulai Jelajah -->
             <button id="close-modal-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-4 rounded-lg transition shadow-md text-sm">
-                Mulai Jelajahi Berita 🚀
+                Mulai Jelajahi Platform 🚀
             </button>
         </div>
     </div>
@@ -298,11 +298,19 @@
         const welcomeModal = document.getElementById('welcome-modal');
         const closeModalBtn = document.getElementById('close-modal-btn');
 
+        // Cek apakah user sudah pernah menutup modal sebelumnya
+        if (localStorage.getItem('kesehatan_mu_welcomed') === 'true') {
+            welcomeModal.style.display = 'none';
+        }
+        // Fungsi button
         closeModalBtn.addEventListener('click', () => {
             welcomeModal.classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => {
                 welcomeModal.style.display = 'none';
             }, 300);
+            
+            // Simpan status permanen ke localStorage browser
+            localStorage.setItem('kesehatan_mu_welcomed', 'true');
         });
     </script>
 </body>
