@@ -30,6 +30,18 @@ def run_scraper():
     except Exception as e:
         return f"SCRAPER NOTICE: Berjalan dengan kendala: {str(e)}", 200
 
+@app.route('/keep-alive')
+def keep_alive():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        return "Database Keep-Alive Sukses!", 200
+    except Exception as e:
+        return f"Error Keep-Alive: {str(e)}", 500
+
 @app.route('/reset-db')
 def reset_db():
     """Menghapus semua data artikel untuk memulai ulang dari bersih"""
