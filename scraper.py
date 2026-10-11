@@ -162,12 +162,12 @@ def auto_cleanup():
     except Exception as e:
         print(f"[CLEANUP ERROR] Gagal membersihkan storage: {e}")
 
-def scrape_kesehatan():
-    print("[SCRAPER] Memulai proses penarikan RSS berita kesehatan...")
+def scrape_kesehatan(batch=1):
+    print(f"[SCRAPER] Memulai proses penarikan RSS berita kesehatan (Batch {batch})...")
     init_db()
     
-    # MULTI-SLOT RSS SOURCES: Tambahkan link RSS portal lain di bawah baris ini jika sudah menemukannya!
-    sources = [
+    # KELOMPOK BATCH 1 (Portal Lokal 1)
+    batch_1_sources = [
         {
             "name": "CNN Indonesia",
             "url": "https://www.cnnindonesia.com/gaya-hidup/rss"
@@ -180,6 +180,10 @@ def scrape_kesehatan():
             "name": "Detik Health",
             "url": "https://health.detik.com/sexual-health"
         },
+    ]
+
+    # KELOMPOK BATCH 2 (Portal Lokal 2 & Internasional)
+    batch_2_sources = [
         {
             "name": "Detik Health",
             "url": "https://health.detik.com/berita-detikhealth/rss"
@@ -188,16 +192,18 @@ def scrape_kesehatan():
             "name": "Medical Xpress",
             "url": "https://medicalxpress.com/rss-feed/"
         },
-                {
+        {
             "name": "ScienceDaily",
             "url": "https://www.sciencedaily.com/rss/top/health.xml"
         },
-                {
+        {
             "name": "Sindonews Health",
             "url": "https://lifestyle.sindonews.com/rss"
         },
-        # {"name": "Portal Lain", "url": "https://link-rss-lain.com/rss"}
     ]
+
+    # Pilih sumber berdasarkan batch yang dipanggil
+    sources = batch_1_sources if batch == 1 else batch_2_sources
     
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -278,10 +284,11 @@ def scrape_kesehatan():
     conn.commit()
     cursor.close()
     conn.close()
-    print(f"[SCRAPER] Selesai! Berhasil memproses {inserted_count} artikel baru.")
+    print(f"[SCRAPER] Selesai! Berhasil memproses {inserted_count} artikel baru (Batch {batch}).")
     
-    # Jalankan pembersihan otomatis database
-    auto_cleanup()
+    # Jalankan pembersihan otomatis database (hanya dijalankan di batch 1 agar efisien)
+    if batch == 1:
+        auto_cleanup()
 
 if __name__ == "__main__":
-    scrape_kesehatan()
+    scrape_kesehatan(1)
