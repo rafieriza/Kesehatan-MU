@@ -90,7 +90,7 @@ def auto_cleanup():
         print(f"[CLEANUP ERROR] Gagal membersihkan storage: {e}")
 
 def scrape_alodokter(cursor):
-    """Fungsi HTML Scraping khusus untuk mengambil artikel dari Alodokter"""
+    """Fungsi HTML Scraping universal untuk mengambil artikel dari Alodokter"""
     print("[SCRAPER] Memulai proses HTML scraping Alodokter...")
     url = "https://www.alodokter.com/kesehatan"
     headers = {
@@ -106,42 +106,55 @@ def scrape_alodokter(cursor):
 
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Cari kartu/elemen artikel di halaman Alodokter berdasarkan struktur umum tag/class mereka
-        article_cards = soup.select('a.content-list, div.article-list-item, div.row-content, a.list-content')
+        # Ambil semua tag 'a' yang ada di halaman yang mengarah ke link artikel kesehatan/penyakit
+        all_links = soup.find_all('a', href=True)
         
-        # Fallback jika selector spesifik tidak ketemu, cari semua tag 'a' yang mengarah ke artikel kesehatan
-        if not article_cards:
-            article_cards = [a for a in soup.find_all('a', href=True) if '/kesehatan/' in a['href'] or '/penyakit/' in a['href']]
+        processed_urls = set()
 
-        for card in article_cards:
+        for a in all_links:
             try:
-                # Ambil Judul
-                title_elem = card.find(['h2', 'h3', 'span'], class_=['title', 'article-title']) or card.find(['h2', 'h3'])
-                if not title_elem:
-                    # Coba ambil langsung teks dari card jika berupa tag <a> langsung
-                    title = card.get_text(strip=True)
-                else:
-                    title = title_elem.get_text(strip=True)
-
-                if not title or len(title) < 10:
+                link = a.get('href', '').strip()
+                
+                # Filter agar hanya mengambil link artikel internal alodokter yang valid
+                if not link or not (link.startswith('/') or 'alodokter.com' in link):
+                    continue
+                
+                # Biasanya artikel kesehatan alodokter berupa slug teks, hindari halaman kategori umum
+                if link in ['/kesehatan', '/penyakit', '/obat', '/community', '/tanya-dokter']:
                     continue
 
-                # Ambil Link Artikel
-                link = card.get('href', '')
-                if link and not link.startswith('http'):
+                if not link.startswith('http'):
                     link = "https://www.alodokter.com" + link
-                elif not link:
+
+                if link in processed_urls:
+                    continue
+                processed_urls.add(link)
+
+                # Ambil judul dari teks di dalam tag 'a' atau dari elemen anak terdekatnya (h2, h3, span)
+                title_elem = a.find(['h2', 'h3', 'span', 'p'])
+                title = title_elem.get_text(strip=True) if title_elem else a.get_text(strip=True)
+
+                # Jika teks terlalu pendek atau menyerupai tombol (seperti "Baca Selengkapnya"), abaikan
+                if not title or len(title) < 15 or title.lower() in ['baca selengkapnya', 'selanjutnya']:
                     continue
 
-                # Ambil Ringkasan / Summary
-                summary_elem = card.find(['p', 'div'], class_=['description', 'snippet'])
-                summary = summary_elem.get_text(strip=True) if summary_elem else title
+                # Ambil ringkasan jika ada di sekitar elemen
+                summary = title # Default summary pakai judul jika tidak ketemu paragraf pendukung
+                parent = a.find_parent('div')
+                if parent:
+                    p_elem = parent.find('p')
+                    if p_elem and p_elem.get_text(strip=True) != title:
+                        summary = p_elem.get_text(strip=True)
+
                 if len(summary) > 250:
                     summary = summary[:250] + "..."
 
-                # Ambil Gambar Thumbnail jika ada
-                img_elem = card.find('img')
-                image_url = img_elem.get('src', '') if img_elem else ""
+                # Ambil gambar thumbnail jika ada di dalam card yang sama
+                image_url = ""
+                if parent:
+                    img_elem = parent.find('img')
+                    if img_elem:
+                        image_url = img_elem.get('src') or img_elem.get('data-src', '')
 
                 published_at = datetime.now()
 
