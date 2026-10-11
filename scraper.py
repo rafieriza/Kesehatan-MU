@@ -133,6 +133,15 @@ def is_health_article(title):
         # --- GIZI, DIET, & GAYA HIDUP SEHAT ---
         'gizi', 'nutrisi', 'diet', 'kalori', 'obesitas', 'kegemukan', 'karbohidrat', 'protein', 'lemak',
         'serat', 'hidrasi', 'kebugaran', 'fitness', 'aerobik', 'detoks', 'sanitasi', 'higiene'
+    
+        # Padanan Bahasa Inggris (Untuk Jurnal / Medical Xpress)
+        'health', 'healthy', 'doctor', 'hospital', 'medicine', 'drug', 'disease', 
+        'illness', 'treatment', 'therapy', 'virus', 'bacteria', 'vaccine', 
+        'nutrition', 'cancer', 'diabetes', 'heart', 'cardiac', 'stroke', 
+        'hypertension', 'mental', 'depression', 'stress', 'clinic', 'medical', 
+        'patient', 'infection', 'fever', 'flu', 'covid', 'tumor', 'skin', 
+        'dental', 'sleep', 'symptom', 'injury', 'exercise', 'clinical', 'trial',
+        'study shows', 'researchers find', 'blood pressure', 'brain'
     ]
 
     
@@ -220,14 +229,35 @@ def scrape_kesehatan():
                 if not summary:
                     summary = ""
 
-                # Ambil gambar thumbnail jika tersedia (Mendukung media:thumbnail & media_content)
+                # Ambil gambar thumbnail dengan fallback yang lebih agresif
                 image_url = ""
+                
+                # 1. Cek media_thumbnail langsung
                 if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
                     image_url = entry.media_thumbnail[0].get('url', '')
-                elif hasattr(entry, 'media_content') and entry.media_content:
+                
+                # 2. Cek apakah tersimpan di dalam entry.links (biasanya feedparser naruh tipe gambar di sini)
+                if not image_url and hasattr(entry, 'links'):
+                    for link in entry.links:
+                        if 'image' in link.get('type', ''):
+                            image_url = link.get('href', '')
+                            break
+            
+                # 3. Cek media_content standar
+                if not image_url and hasattr(entry, 'media_content') and entry.media_content:
                     image_url = entry.media_content[0].get('url', '')
-                elif hasattr(entry, 'enclosures') and entry.enclosures:
+                    
+                # 4. Cek enclosures
+                if not image_url and hasattr(entry, 'enclosures') and entry.enclosures:
                     image_url = entry.enclosures[0].get('href', '')
+                    
+                # 5. Ekstraksi manual dari teks description/summary jika masih kosong
+                if not image_url and ('summary' in entry or 'description' in entry):
+                    import re
+                    raw_html = entry.get('summary', '') or entry.get('description', '')
+                    img_match = re.search(r'<img[^>]+src="([^">]+)"', raw_html)
+                    if img_match:
+                        image_url = img_match.group(1)
 
                 published_at = parse_date(entry)
 
