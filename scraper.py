@@ -5,6 +5,8 @@ import time
 import re
 import mysql.connector
 from dotenv import load_dotenv
+import requests
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -87,23 +89,96 @@ def auto_cleanup():
     except Exception as e:
         print(f"[CLEANUP ERROR] Gagal membersihkan storage: {e}")
 
+def scrape_alodokter(cursor):
+    """Fungsi HTML Scraping khusus untuk mengambil artikel dari Alodokter"""
+    print("[SCRAPER] Memulai proses HTML scraping Alodokter...")
+    url = "https://www.alodokter.com/kesehatan"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    inserted_alodokter = 0
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"[Error] Gagal mengakses Alodokter, Status Code: {response.status_code}")
+            return 0
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Cari kartu/elemen artikel di halaman Alodokter berdasarkan struktur umum tag/class mereka
+        article_cards = soup.select('a.content-list, div.article-list-item, div.row-content, a.list-content')
+        
+        # Fallback jika selector spesifik tidak ketemu, cari semua tag 'a' yang mengarah ke artikel kesehatan
+        if not article_cards:
+            article_cards = [a for a in soup.find_all('a', href=True) if '/kesehatan/' in a['href'] or '/penyakit/' in a['href']]
+
+        for card in article_cards:
+            try:
+                # Ambil Judul
+                title_elem = card.find(['h2', 'h3', 'span'], class_=['title', 'article-title']) or card.find(['h2', 'h3'])
+                if not title_elem:
+                    # Coba ambil langsung teks dari card jika berupa tag <a> langsung
+                    title = card.get_text(strip=True)
+                else:
+                    title = title_elem.get_text(strip=True)
+
+                if not title or len(title) < 10:
+                    continue
+
+                # Ambil Link Artikel
+                link = card.get('href', '')
+                if link and not link.startswith('http'):
+                    link = "https://www.alodokter.com" + link
+                elif not link:
+                    continue
+
+                # Ambil Ringkasan / Summary
+                summary_elem = card.find(['p', 'div'], class_=['description', 'snippet'])
+                summary = summary_elem.get_text(strip=True) if summary_elem else title
+                if len(summary) > 250:
+                    summary = summary[:250] + "..."
+
+                # Ambil Gambar Thumbnail jika ada
+                img_elem = card.find('img')
+                image_url = img_elem.get('src', '') if img_elem else ""
+
+                published_at = datetime.now()
+
+                # Masukkan ke database jika lolos filter kesehatan
+                if title and link and is_health_article(title):
+                    sql = """
+                    INSERT IGNORE INTO artikel_kesehatan 
+                    (title, summary, source, url, image_url, published_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(sql, (title, summary, "Alodokter", link, image_url, published_at))
+                    inserted_alodokter += cursor.rowcount
+            except Exception as item_err:
+                continue
+
+    except Exception as e:
+        print(f"[Scraper Exception (Alodokter)]: {e}")
+
+    print(f"[SCRAPER] Berhasil menyerap {inserted_alodokter} artikel dari Alodokter.")
+    return inserted_alodokter
+
 def scrape_kesehatan():
-    print("[SCRAPER] Memulai proses penarikan RSS berita kesehatan...")
+    print("[SCRAPER] Memulai proses penarikan berita kesehatan...")
     init_db()
     
-    # MULTI-SLOT RSS SOURCES: Tambahkan link RSS portal lain di bawah baris ini jika sudah menemukannya!
     sources = [
         {
             "name": "CNN Indonesia",
             "url": "https://www.cnnindonesia.com/gaya-hidup/rss"
         },
-        # {"name": "Portal Lain", "url": "https://link-rss-lain.com/rss"}
     ]
     
     conn = get_db_connection()
     cursor = conn.cursor()
     inserted_count = 0
 
+    # 1. Jalankan RSS Scraping (Sistem Lama)
     for src in sources:
         try:
             print(f"[SCRAPER] Membaca feed: {src['name']}...")
@@ -113,17 +188,14 @@ def scrape_kesehatan():
                 title = entry.get('title', '').strip()
                 url = entry.get('link', '').strip()
                 
-                # Tangani summary jika kosong dari RSS
                 raw_summary = entry.get('summary', '').strip() or entry.get('description', '').strip()
                 summary = re.sub('<[^<]+?>', '', raw_summary)
                 if len(summary) > 250:
                     summary = summary[:250] + "..."
                 
-                # Jika ringkasan benar-benar kosong dari sumbernya, biarkan string kosong (agar frontend bisa skip)
                 if not summary:
                     summary = ""
 
-                # Ambil gambar thumbnail jika tersedia
                 image_url = ""
                 if hasattr(entry, 'media_content') and entry.media_content:
                     image_url = entry.media_content[0].get('url', '')
@@ -132,7 +204,6 @@ def scrape_kesehatan():
 
                 published_at = parse_date(entry)
 
-                # Filter khusus judul kesehatan
                 if title and url and is_health_article(title):
                     try:
                         sql = """
@@ -143,17 +214,25 @@ def scrape_kesehatan():
                         cursor.execute(sql, (title, summary, src['name'], url, image_url, published_at))
                         inserted_count += cursor.rowcount
                     except Exception as db_err:
-                        print(f"Error insert artikel: {db_err}")
+                        print(f"Error insert artikel RSS: {db_err}")
         except Exception as e:
             print(f"Gagal memproses RSS dari {src['name']}: {e}")
+
+    # 2. Jalankan HTML Scraping Alodokter (Sistem Baru)
+    try:
+        alo_count = scrape_alodokter(cursor)
+        inserted_count += alo_count
+    except Exception as e:
+        print(f"Gagal menjalankan Alodokter scraper: {e}")
 
     conn.commit()
     cursor.close()
     conn.close()
-    print(f"[SCRAPER] Selesai! Berhasil memproses {inserted_count} artikel baru.")
+    print(f"[SCRAPER] Selesai! Total keseluruhan berhasil memproses {inserted_count} artikel baru.")
     
     # Jalankan pembersihan otomatis database
     auto_cleanup()
 
 if __name__ == "__main__":
     scrape_kesehatan()
+    
