@@ -20,6 +20,31 @@ def get_db_connection():
         connect_timeout=5
     )
 
+@app.route('/run-scraper')
+def run_scraper():
+    """Rute untuk memicu scraper.py secara otomatis"""
+    try:
+        from scraper import scrape_kesehatan
+        scrape_kesehatan()
+        return "SUKSES: Proses RSS scraping berhasil dijalankan!", 200
+    except Exception as e:
+        return f"SCRAPER NOTICE: Berjalan dengan kendala: {str(e)}", 200
+
+@app.route('/reset-db')
+def reset_db():
+    """Menghapus semua data artikel untuk memulai ulang dari bersih"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Mengosongkan isi tabel dan mereset ID auto increment ke 1
+        cursor.execute("TRUNCATE TABLE artikel_kesehatan;")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return "SUKSES: Seluruh database berhasil dibersihkan (Reset Total)!", 200
+    except Exception as e:
+        return f"GAGAL reset database: {str(e)}", 500
+
 @app.route('/init-db')
 def init_db():
     """Rute sekali pakai untuk membuat tabel database di Aiven MySQL"""
@@ -84,16 +109,6 @@ def get_synonyms_and_keywords(query):
             matched_keywords.extend([key, val])
             
     return list(set(matched_keywords))
-
-@app.route('/run-scraper')
-def run_scraper():
-    """Rute untuk memicu scraper.py secara otomatis"""
-    try:
-        from scraper import scrape_kesehatan
-        scrape_kesehatan()
-        return "SUKSES: Proses RSS scraping berhasil dijalankan!", 200
-    except Exception as e:
-        return f"SCRAPER NOTICE: Berjalan dengan kendala: {str(e)}", 200
 
 @app.route('/')
 def index():
