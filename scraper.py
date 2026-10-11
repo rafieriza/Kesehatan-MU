@@ -5,8 +5,6 @@ import time
 import re
 import mysql.connector
 from dotenv import load_dotenv
-import requests
-from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -55,22 +53,88 @@ def is_health_article(title):
 
     # Kata Kunci Negatif (Segera buang jika membahas non-kesehatan)
     exclude_keywords = [
-        'resep', 'kuliner', 'restoran', 'makanan', 'gaun', 'fashion', 
-        'outfit', 'skincare', 'makeup', 'wisata', 'destinasi', 'hotel', 
-        'tiket', 'konser', 'film', 'zodiak', 'ramalan', 'pariwisata'
+        # --- KULINER, MAKANAN, & GAYA HIDUP ---
+        'resep', 'kuliner', 'restoran', 'makanan', 'minuman', 'kafe', 'cafe', 'menu', 
+        'masak', 'memasak', 'lezat', 'enak', 'camilan', 'snack', 'jajanan', 'mukbang',
+        'hidangan', 'bumbu', 'dapur', 'warung', 'kedai', 'Review Makanan',
+
+        # --- FASHION, KECANTIKAN, & SKINCARE ---
+        'gaun', 'fashion', 'outfit', 'skincare', 'makeup', 'kosmetik', 'gaya', 'tren',
+        'baju', 'pakaian', 'model', 'peragaan', 'lipstik', 'skincare rutin', 'glowing',
+        'gaya rambut', 'potongan rambut', 'parfum', 'aksesoris', 'OOTD',
+
+        # --- WISATA, TRAVEL, & TRANSPORTASI ---
+        'wisata', 'destinasi', 'hotel', 'tiket', 'pariwisata', 'bandara', 'pesawat',
+        'liburan', 'traveling', 'resort', 'penginapan', 'pantai', 'gunung', 'rute',
+        'stasiun', 'mudik', 'koper', 'oleh-oleh', 'backpacker',
+
+        # --- HIBURAN, FILM, MUSIK, & GOSIP (ENTERTAINMENT) ---
+        'konser', 'film', 'bioskop', 'sinopsis', 'aktor', 'aktris', 'seleb', 'selebriti',
+        'artis', 'gosip', 'rumor', 'pacar', 'menikah', 'cerai', 'lagu', 'album', 'musik',
+        'drama', 'drakor', 'series', 'netflix', 'konser musik', 'manggung',
+
+        # --- ASTROLOGI, HOBI, & HIBURAN RINGAN ---
+        'zodiak', 'ramalan', 'horoskop', 'shio', 'bintang', 'keberuntungan', 'primbon',
+        'ikan', 'kucing', 'anjing', 'hewan peliharaan', 'pet', 'tanaman hias', 'kebun',
+        'otomotif', 'mobil', 'motor', 'game', 'gaming', 'esports', 'gadget', 'hp',
+
+        # --- POLITIK & BISNIS NON-MEDIS (Untuk mencegah spam berita reguler) ---
+        'saham', 'investasi', 'bisnis', 'ekonomi', 'rupiah', 'dolar', 'politik', 'pemilu',
+        'pilkada', 'dpr', 'presiden', 'menteri', 'korupsi', 'kriminal', 'rampok', 'begal'
     ]
     if any(ex in text for ex in exclude_keywords):
         return False
 
     # Kata Kunci Positif (Wajib ada unsur kesehatan/medis)
     health_keywords = [
-        'kesehatan', 'sehat', 'dokter', 'rs', 'rumah sakit', 'obat', 'penyakit', 
-        'virus', 'bakteri', 'vaksin', 'gizi', 'nutrisi', 'diet', 'kanker', 
-        'diabetes', 'jantung', 'stroke', 'hipertensi', 'darah tinggi', 'mental', 
-        'depresi', 'stres', 'klinik', 'medis', 'pasien', 'infeksi', 'demam', 
-        'dbd', 'flu', 'covid', 'tumor', 'kulit', 'gigi', 'mpox', 'bpjs', 
-        'imunisasi', 'tidur', 'gejala', 'stunting', 'cedera', 'olahraga'
+        # --- FAKILITAS, TENAGA, & ADMINISTRASI MEDIS ---
+        'kesehatan', 'sehat', 'sakit', 'gejala', 'medis', 'klinik', 'puskesmas', 'rs', 'rumah sakit', 
+        'dokter', 'psikolog', 'psikologi', 'pasien', 'bpjs', 'perawat', 'bidan', 'apotek', 'laboratorium',
+        'faskes', 'igd', 'icu', 'rawat inap', 'rawat jalan', 'rekam medis', 'rujukan', 'diagnosis', 
+        'prosedur', 'operasi', 'bedah', 'terapi', 'rehabilitasi', 'ambulan', 'screening',
+    
+        # --- GEJALA & KONDISI UMUM ---
+        'infeksi', 'demam', 'cedera', 'sariawan', 'stunting', 'luka', 'nyeri', 'pusing', 'sakit kepala',
+        'mual', 'muntah', 'diare', 'batuk', 'pilek', 'sesak napas', 'alergi', 'ruam', 'bengkak',
+        'kelelahan', 'lemas', 'insomnia', 'kejang', 'pingsan', 'radang', 'inflamasi',
+    
+        # --- PENYAKIT INFEKSI (VIRUS, BAKTERI, PARASIT) ---
+        'virus', 'bakteri', 'flu', 'dbd', 'demam berdarah', 'covid', 'mpox', 'cacar', 'tbc', 'tuberculosis',
+        'tifus', 'tipes', 'malaria', 'hiv', 'aids', 'hepatitis', 'tetanus', 'pneumonia', 'ispa', 'rabies',
+        'leptospirosis', 'anthrax', 'kusta', 'tokso', 'cacingan', 'kudis', 'scabies',
+    
+        # --- PENYAKIT KRONIS & NON-MENULAR (PTM) ---
+        'kanker', 'tumor', 'diabetes', 'kencing manis', 'jantung', 'stroke', 'hipertensi', 'darah tinggi',
+        'kolesterol', 'asam urat', 'kista', 'miom', 'gagal ginjal', 'batu ginjal', 'asma', 'gout',
+        'osteoporosis', 'rematik', 'artritis', 'autoimun', 'lupus', 'alzheimer', 'demensia', 'parkinson',
+        'epilepsi', 'amandel', 'sinusitis', 'varises', 'hernia',
+    
+        # --- KESEHATAN ORGAN & SPESIALISTIK ---
+        # Pencernaan & Ekskresi
+        'lambung', 'maag', 'gerd', 'usus buntu', 'wasir', 'ambeyen', 'lever', 'sirosis',
+        # Mata, THT, & Gigi
+        'mata', 'katarak', 'glaukoma', 'minus', 'telinga', 'hidung', 'tenggorokan', 'gigi', 'gusi', 'karies',
+        # Kulit & Kelamin
+        'kulit', 'dermatitis', 'eksim', 'jerawat', 'kurap', 'kutil', 'kelamin', 'sipilis', 'gonore',
+    
+        # --- KESEHATAN REPRODUKSI, IBU, & ANAK ---
+        'kehamilan', 'hamil', 'janin', 'kandungan', 'melahirkan', 'persalinan', 'nifas', 'asi', 'menyusui',
+        'kb', 'kontrasepsi', 'kespro', 'menstruasi', 'haid', 'pms', 'kesuburan', 'infertil', 'pcos',
+        'pediatri', 'tumbuh kembang', 'imunisasi', 'vaksin',
+    
+        # --- KESEHATAN MENTAL & JIWA ---
+        'mental', 'otak', 'jiwa', 'depresi', 'stres', 'anxiety', 'kecemasan', 'trauma', 'skizofrenia',
+        'bipolar', 'autisme', 'adhd', 'insomnia', 'gangguan tidur', 'panic attack', 'halusinasi',
+    
+        # --- FARMAKOLOGI & SUPLEMENTASI ---
+        'obat', 'vitamin', 'suplemen', 'antibiotik', 'analgesik', 'paracetamol', 'antiseptik', 'salep',
+        'sirup obat', 'kapsul', 'tablet', 'dosis', 'resep dokter', 'herbal', 'jamu',
+    
+        # --- GIZI, DIET, & GAYA HIDUP SEHAT ---
+        'gizi', 'nutrisi', 'diet', 'kalori', 'obesitas', 'kegemukan', 'karbohidrat', 'protein', 'lemak',
+        'serat', 'hidrasi', 'kebugaran', 'fitness', 'aerobik', 'detoks', 'sanitasi', 'higiene'
     ]
+
     
     return any(keyword in text for keyword in health_keywords)
 
@@ -89,293 +153,47 @@ def auto_cleanup():
     except Exception as e:
         print(f"[CLEANUP ERROR] Gagal membersihkan storage: {e}")
 
-def scrape_alodokter(cursor):
-    """Fungsi HTML Scraping universal untuk mengambil artikel dari Alodokter"""
-    print("[SCRAPER] Memulai proses HTML scraping Alodokter...")
-    url = "https://www.alodokter.com/kesehatan"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    
-    inserted_alodokter = 0
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code != 200:
-            print(f"[Error] Gagal mengakses Alodokter, Status Code: {response.status_code}")
-            return 0
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Ambil semua tag 'a' yang ada di halaman yang mengarah ke link artikel kesehatan/penyakit
-        all_links = soup.find_all('a', href=True)
-        
-        processed_urls = set()
-
-        for a in all_links:
-            try:
-                link = a.get('href', '').strip()
-                
-                # Filter agar hanya mengambil link artikel internal alodokter yang valid
-                if not link or not (link.startswith('/') or 'alodokter.com' in link):
-                    continue
-                
-                # Biasanya artikel kesehatan alodokter berupa slug teks, hindari halaman kategori umum
-                if link in ['/kesehatan', '/penyakit', '/obat', '/community', '/tanya-dokter']:
-                    continue
-
-                if not link.startswith('http'):
-                    link = "https://www.alodokter.com" + link
-
-                if link in processed_urls:
-                    continue
-                processed_urls.add(link)
-
-                # Ambil judul dari teks di dalam tag 'a' atau dari elemen anak terdekatnya (h2, h3, span)
-                title_elem = a.find(['h2', 'h3', 'span', 'p'])
-                title = title_elem.get_text(strip=True) if title_elem else a.get_text(strip=True)
-
-                # Jika teks terlalu pendek atau menyerupai tombol (seperti "Baca Selengkapnya"), abaikan
-                if not title or len(title) < 15 or title.lower() in ['baca selengkapnya', 'selanjutnya']:
-                    continue
-
-                # Ambil ringkasan jika ada di sekitar elemen
-                summary = title # Default summary pakai judul jika tidak ketemu paragraf pendukung
-                parent = a.find_parent('div')
-                if parent:
-                    p_elem = parent.find('p')
-                    if p_elem and p_elem.get_text(strip=True) != title:
-                        summary = p_elem.get_text(strip=True)
-
-                if len(summary) > 250:
-                    summary = summary[:250] + "..."
-
-                # Ambil gambar thumbnail jika ada di dalam card yang sama
-                image_url = ""
-                if parent:
-                    img_elem = parent.find('img')
-                    if img_elem:
-                        image_url = img_elem.get('src') or img_elem.get('data-src', '')
-
-                published_at = datetime.now()
-
-                # Masukkan ke database jika lolos filter kesehatan
-                if title and link and is_health_article(title):
-                    sql = """
-                    INSERT IGNORE INTO artikel_kesehatan 
-                    (title, summary, source, url, image_url, published_at)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(sql, (title, summary, "Alodokter", link, image_url, published_at))
-                    inserted_alodokter += cursor.rowcount
-            except Exception as item_err:
-                continue
-
-    except Exception as e:
-        print(f"[Scraper Exception (Alodokter)]: {e}")
-
-    print(f"[SCRAPER] Berhasil menyerap {inserted_alodokter} artikel dari Alodokter.")
-    return inserted_alodokter
-
-def scrape_kompas(cursor):
-    """Fungsi HTML Scraping khusus untuk mengambil artikel dari Kompas Health"""
-    print("[SCRAPER] Memulai proses HTML scraping Kompas Health...")
-    url = "https://health.kompas.com"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    
-    inserted_kompas = 0
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code != 200:
-            print(f"[Error] Gagal mengakses Kompas Health, Status Code: {response.status_code}")
-            return 0
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Cari semua elemen artikel (biasanya Kompas menggunakan class article__item atau tag link di rubrik)
-        article_items = soup.select('div.article__item, div.articleItem, .neath-item')
-        
-        # Fallback jika selector spesifik tidak ketemu, ambil semua tag 'a' yang mengarah ke health.kompas.com
-        if not article_items:
-            article_items = soup.find_all('a', href=True)
-
-        processed_urls = set()
-
-        for item in article_items:
-            try:
-                # Jika item berupa tag <a> langsung atau dibungkus dalam div
-                if item.name == 'a':
-                    link = item.get('href', '').strip()
-                    a_elem = item
-                else:
-                    a_elem = item.find('a', href=True)
-                    if not a_elem:
-                        continue
-                    link = a_elem.get('href', '').strip()
-
-                # Filter link valid milik kompas health
-                if not link or 'kompas.com' not in link or '/read/' not in link:
-                    continue
-
-                if link in processed_urls:
-                    continue
-                processed_urls.add(link)
-
-                # Ambil Judul
-                title_elem = item.find(['h2', 'h3', 'h4']) if item.name != 'a' else item
-                title = title_elem.get_text(strip=True) if title_elem else a_elem.get_text(strip=True)
-
-                if not title or len(title) < 15:
-                    continue
-
-                # Ambil Ringkasan
-                summary = title
-                p_elem = item.find('p')
-                if p_elem:
-                    summary = p_elem.get_text(strip=True)
-                
-                if len(summary) > 250:
-                    summary = summary[:250] + "..."
-
-                # Ambil Gambar
-                img_elem = item.find('img')
-                image_url = ""
-                if img_elem:
-                    image_url = img_elem.get('data-src') or img_elem.get('src', '')
-
-                published_at = datetime.now()
-
-                # Masukkan ke database jika lolos filter kesehatan
-                if title and link and is_health_article(title):
-                    sql = """
-                    INSERT IGNORE INTO artikel_kesehatan 
-                    (title, summary, source, url, image_url, published_at)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(sql, (title, summary, "Kompas Health", link, image_url, published_at))
-                    inserted_kompas += cursor.rowcount
-            except Exception as item_err:
-                continue
-
-    except Exception as e:
-        print(f"[Scraper Exception (Kompas)]: {e}")
-
-    print(f"[SCRAPER] Berhasil menyerap {inserted_kompas} artikel dari Kompas Health.")
-    return inserted_kompas
-
-def scrape_detik(cursor):
-    """Fungsi HTML Scraping khusus untuk mengambil artikel dari Detik Health dengan penanganan gambar lazy-load"""
-    print("[SCRAPER] Memulai proses HTML scraping Detik Health...")
-    url = "https://health.detik.com"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    
-    inserted_detik = 0
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code != 200:
-            print(f"[Error] Gagal mengakses Detik Health, Status Code: {response.status_code}")
-            return 0
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        article_items = soup.select('article, div.list-content, div.media__text')
-        
-        if not article_items:
-            article_items = soup.find_all('a', href=True)
-
-        processed_urls = set()
-
-        for item in article_items:
-            try:
-                if item.name == 'a':
-                    link = item.get('href', '').strip()
-                    a_elem = item
-                else:
-                    a_elem = item.find('a', href=True)
-                    if not a_elem:
-                        continue
-                    link = a_elem.get('href', '').strip()
-
-                if not link or 'detik.com' not in link:
-                    continue
-
-                # FILTER BARU: Buang halaman tag, indeks, foto, atau video
-                if '/tag/' in link or '/indeks' in link or '/foto/' in link or '/video/' in link:
-                    continue
-
-                if link in processed_urls:
-                    continue
-                processed_urls.add(link)
-
-                # Ambil Judul
-                title_elem = item.find(['h2', 'h3', 'h4']) if item.name != 'a' else item
-                title = title_elem.get_text(strip=True) if title_elem else a_elem.get_text(strip=True)
-
-                if not title or len(title) < 15 or title.lower() in ['baca selengkapnya', 'selanjutnya']:
-                    continue
-
-                # Ambil Ringkasan
-                summary = title
-                p_elem = item.find('p')
-                if p_elem:
-                    summary = p_elem.get_text(strip=True)
-                
-                if len(summary) > 250:
-                    summary = summary[:250] + "..."
-
-                # PENGAMBILAN GAMBAR LEBIH AMAN (Mendeteksi berbagai atribut lazy loading Detik)
-                img_elem = item.find('img')
-                image_url = ""
-                if img_elem:
-                    image_url = (
-                        img_elem.get('src') or 
-                        img_elem.get('data-src') or 
-                        img_elem.get('data-lazy-src') or 
-                        img_elem.get('data-original') or 
-                        ""
-                    )
-                    # Pastikan jika URL gambar berupa relative path, diubah jadi absolute
-                    if image_url and not image_url.startswith('http'):
-                        image_url = ""
-
-                published_at = datetime.now()
-
-                # Masukkan ke database jika lolos filter kesehatan
-                if title and link and is_health_article(title):
-                    sql = """
-                    INSERT IGNORE INTO artikel_kesehatan 
-                    (title, summary, source, url, image_url, published_at)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(sql, (title, summary, "Detik Health", link, image_url, published_at))
-                    inserted_detik += cursor.rowcount
-            except Exception as item_err:
-                continue
-
-    except Exception as e:
-        print(f"[Scraper Exception (Detik)]: {e}")
-
-    print(f"[SCRAPER] Berhasil menyerap {inserted_detik} artikel dari Detik Health.")
-    return inserted_detik
-    
 def scrape_kesehatan():
-    print("[SCRAPER] Memulai proses penarikan berita kesehatan...")
+    print("[SCRAPER] Memulai proses penarikan RSS berita kesehatan...")
     init_db()
     
+    # MULTI-SLOT RSS SOURCES: Tambahkan link RSS portal lain di bawah baris ini jika sudah menemukannya!
     sources = [
         {
             "name": "CNN Indonesia",
             "url": "https://www.cnnindonesia.com/gaya-hidup/rss"
         },
+        {
+            "name": "Liputan6",
+            "url": "https://feed.liputan6.com/rss/kesehatan"
+        },
+        {
+            "name": "Detik Health",
+            "url": "https://health.detik.com/sexual-health"
+        },
+        {
+            "name": "Detik Health",
+            "url": "https://health.detik.com/berita-detikhealth/rss"
+        },
+        {
+            "name": "CNBC Indonesia",
+            "url": "https://www.cnbcindonesia.com/news/rss"
+        },
+                {
+            "name": "Tempo co",
+            "url": "https://rss.tempo.co/nasional"
+        },
+                {
+            "name": "Sindonews Health",
+            "url": "https://lifestyle.sindonews.com/rss"
+        },
+        # {"name": "Portal Lain", "url": "https://link-rss-lain.com/rss"}
     ]
     
     conn = get_db_connection()
     cursor = conn.cursor()
     inserted_count = 0
 
-    # 1. Jalankan RSS Scraping (Sistem Lama)
     for src in sources:
         try:
             print(f"[SCRAPER] Membaca feed: {src['name']}...")
@@ -385,14 +203,24 @@ def scrape_kesehatan():
                 title = entry.get('title', '').strip()
                 url = entry.get('link', '').strip()
                 
+                # --- TAMBAHKAN FILTER INI UNTUK SINDONEWS ---
+                if src['name'] == "Sindonews Health":
+                    categories = [t.get('term', '').lower() for t in entry.get('tags', []) if t.get('term')]
+                    if not any(cat in ['health', 'kesehatan'] for cat in categories):
+                        continue
+                # ---------------------------------------------
+                
+                # Tangani summary jika kosong dari RSS
                 raw_summary = entry.get('summary', '').strip() or entry.get('description', '').strip()
                 summary = re.sub('<[^<]+?>', '', raw_summary)
                 if len(summary) > 250:
                     summary = summary[:250] + "..."
                 
+                # Jika ringkasan benar-benar kosong dari sumbernya, biarkan string kosong (agar frontend bisa skip)
                 if not summary:
                     summary = ""
 
+                # Ambil gambar thumbnail jika tersedia
                 image_url = ""
                 if hasattr(entry, 'media_content') and entry.media_content:
                     image_url = entry.media_content[0].get('url', '')
@@ -401,6 +229,7 @@ def scrape_kesehatan():
 
                 published_at = parse_date(entry)
 
+                # Filter khusus judul kesehatan
                 if title and url and is_health_article(title):
                     try:
                         sql = """
@@ -411,35 +240,14 @@ def scrape_kesehatan():
                         cursor.execute(sql, (title, summary, src['name'], url, image_url, published_at))
                         inserted_count += cursor.rowcount
                     except Exception as db_err:
-                        print(f"Error insert artikel RSS: {db_err}")
+                        print(f"Error insert artikel: {db_err}")
         except Exception as e:
             print(f"Gagal memproses RSS dari {src['name']}: {e}")
-
-    # 2. Jalankan HTML Scraping Alodokter (Sistem Baru)
-    try:
-        alo_count = scrape_alodokter(cursor)
-        inserted_count += alo_count
-    except Exception as e:
-        print(f"Gagal menjalankan Alodokter scraper: {e}")
-
-    # 3. Jalankan HTML Scraping Kompas Health (Ditambahkan agar tereksekusi)
-    try:
-        kompas_count = scrape_kompas(cursor)
-        inserted_count += kompas_count
-    except Exception as e:
-        print(f"Gagal menjalankan Kompas scraper: {e}")
-
-    # 4. Jalankan HTML Scraping Detik Health (Ditambahkan agar tereksekusi)
-    try:
-        detik_count = scrape_detik(cursor)
-        inserted_count += detik_count
-    except Exception as e:
-        print(f"Gagal menjalankan Detik scraper: {e}")
 
     conn.commit()
     cursor.close()
     conn.close()
-    print(f"[SCRAPER] Selesai! Total keseluruhan berhasil memproses {inserted_count} artikel baru.")
+    print(f"[SCRAPER] Selesai! Berhasil memproses {inserted_count} artikel baru.")
     
     # Jalankan pembersihan otomatis database
     auto_cleanup()
