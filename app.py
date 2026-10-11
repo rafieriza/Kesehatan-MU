@@ -23,10 +23,12 @@ def get_db_connection():
 @app.route('/keep-alive')
 def keep_alive():
     try:
-        # Kueri super ringan untuk membangunkan koneksi database Aiven.io
-        cursor = db.cursor()
+        # Buka koneksi menggunakan fungsi yang sudah ada
+        conn = get_db_connection()
+        cursor = conn.cursor()
         cursor.execute("SELECT 1")
         cursor.close()
+        conn.close() # Tutup koneksi setelah selesai
         return "Database Keep-Alive Sukses!", 200
     except Exception as e:
         return f"Error Keep-Alive: {str(e)}", 500
