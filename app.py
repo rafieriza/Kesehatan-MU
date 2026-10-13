@@ -256,6 +256,7 @@ def get_synonyms_and_keywords(query):
             
     return list(set(matched_keywords))
 
+# Master kamus kategori
 CATEGORY_MAP = {
     'penyakit_menular': [
         'vaksin', 'virus', 'infeksi', 'dbd', 'demam berdarah', 'mpox', 'covid', 'flu', 'demam', 
@@ -322,9 +323,8 @@ def index():
         # 1. Jalankan Pembersihan Artikel Lama (>1 Tahun)
         cleanup_old_articles(cursor, conn)
 
-        # 2. Logika Query Utama & Smart Search / Kategori
+        # 2. Logika Query Utama & Smart Search dengan RapidFuzz
         if query:
-            # Pencarian teks bebas (termasuk judul, summary, sumber, dan tanggal)
             cursor.execute("SELECT * FROM artikel_kesehatan")
             all_articles = cursor.fetchall()
             
@@ -346,6 +346,7 @@ def index():
                 score = 0
                 matched = False
                 
+                # Pencarian berdasarkan Sumber / Tanggal / Judul / Summary / Fuzzy Match
                 if q_lower in source_lower:
                     matched = True
                     score = 120
@@ -378,11 +379,11 @@ def index():
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
-            # Query SQL standar untuk Home, Isu Terbaru, atau Kategori
+            # Query standar jika tidak sedang mencari (berdasarkan kategori & sorting)
             sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
             params = []
 
-            # Category Filtering Logic menggunakan CATEGORY_MAP yang benar
+            # Category Filtering Logic (Kembali ke struktur persis awal kamu yang bekerja)
             if category:
                 keywords = CATEGORY_MAP.get(category, [])
                 if keywords:
@@ -401,10 +402,15 @@ def index():
             per_page = 20
             offset = (page - 1) * per_page
 
-            # Hitung total artikel jika sort latest atau kategori
+            # Hitung total artikel jika sort latest atau category
             if sort_by == 'latest' or category:
                 count_sql = "SELECT COUNT(*) as total FROM artikel_kesehatan WHERE 1=1"
                 count_params = list(params)
+                
+                # Jika kategori aktif, sertakan kriteria kategori ke penghitungan total
+                if category and keywords:
+                    count_sql += f" AND ({cat_conditions})"
+                    
                 cursor.execute(count_sql, tuple(count_params))
                 res_count = cursor.fetchone()
                 total_articles = res_count['total'] if res_count else 0
@@ -424,7 +430,6 @@ def index():
             cursor.execute(sql, tuple(params))
             articles = cursor.fetchall()
 
-        # Filter tambahan jika user melakukan pencarian teks di dalam kategori tertentu
         if query and category:
             cat_keywords = CATEGORY_MAP.get(category, [])
             articles = [art for art in articles if any(ck in f"{art['title']} {art['summary']}".lower() for ck in cat_keywords)]
@@ -432,7 +437,7 @@ def index():
         if query and sort_by == 'latest':
             articles = sorted(articles, key=lambda x: x.get('published_at', datetime.min), reverse=True)
 
-        # Isu Populer untuk Sidebar (SELALU DIEKSEKUSI AGAR SIDEBAR TIDAK HILANG)
+        # Isu Populer untuk Sidebar
         cursor.execute("SELECT * FROM artikel_kesehatan ORDER BY id DESC LIMIT 5")
         trending_articles = cursor.fetchall()
 
@@ -457,3 +462,4 @@ def index():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    
