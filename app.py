@@ -306,9 +306,10 @@ CATEGORY_MAP = {
 
 @app.route('/')
 def index():
+    """Halaman Utama Beranda dengan dukungan Smart Search, Kategori, Region, dan Pagination"""
     query = request.args.get('q', '').strip()
     category = request.args.get('category', '').strip()
-    region = request.args.get('region', '').strip() # Parameter baru untuk filter wilayah/internasional
+    region = request.args.get('region', '').strip()
     sort_by = request.args.get('sort', 'random').strip()
 
     articles = []
@@ -324,7 +325,7 @@ def index():
         # 1. Jalankan Pembersihan Artikel Lama (>1 Tahun)
         cleanup_old_articles(cursor, conn)
 
-        # 2. Logika Query Utama & Smart Search
+        # 2. Logika Query Utama & Smart Search (Judul, Summary, Sumber, & Tanggal Terbit)
         if query:
             cursor.execute("SELECT * FROM artikel_kesehatan")
             all_articles = cursor.fetchall()
@@ -379,7 +380,7 @@ def index():
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
-            # Query standar berdasarkan kategori, region (wilayah), atau sorting
+            # Query standar untuk Home, Isu Terbaru, Kategori, atau Region
             sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
             params = []
 
@@ -408,11 +409,24 @@ def index():
             per_page = 20
             offset = (page - 1) * per_page
 
-            # Hitung total artikel jika sort latest, kategori, atau region
+            # Hitung total artikel jika sort latest, kategori, atau region aktif
             if sort_by == 'latest' or category or region:
                 count_sql = "SELECT COUNT(*) as total FROM artikel_kesehatan WHERE 1=1"
-                count_params = list(params)
-                
+                count_params = []
+
+                if category:
+                    keywords = CATEGORY_MAP.get(category, [])
+                    if keywords:
+                        cat_conditions = " OR ".join(["title LIKE %s OR summary LIKE %s" for _ in keywords])
+                        count_sql += f" AND ({cat_conditions})"
+                        for kw in keywords:
+                            count_params.extend([f"%{kw}%", f"%{kw}%"])
+
+                if region == 'international':
+                    count_sql += " AND source IN ('ScienceDaily', 'Medical Xpress')"
+                elif region == 'local':
+                    count_sql += " AND source NOT IN ('ScienceDaily', 'Medical Xpress')"
+
                 cursor.execute(count_sql, tuple(count_params))
                 res_count = cursor.fetchone()
                 total_articles = res_count['total'] if res_count else 0
@@ -426,7 +440,7 @@ def index():
                 sql += " ORDER BY published_at DESC, id DESC LIMIT %s OFFSET %s"
                 params.extend([per_page, offset])
             else:
-                # Home Utama: Random dan KECUALIKAN ScienceDaily (jika tidak sedang di-filter region)
+                # Home Utama: Random dan KECUALIKAN ScienceDaily jika tidak sedang di-filter region
                 if not region:
                     sql += " AND source != 'ScienceDaily'"
                 sql += " ORDER BY RAND() LIMIT 20"
@@ -441,7 +455,7 @@ def index():
         if query and sort_by == 'latest':
             articles = sorted(articles, key=lambda x: x.get('published_at', datetime.min), reverse=True)
 
-        # Isu Populer untuk Sidebar
+        # Isu Populer untuk Sidebar (Selalu dieksekusi agar sidebar tidak pernah kosong)
         cursor.execute("SELECT * FROM artikel_kesehatan ORDER BY id DESC LIMIT 5")
         trending_articles = cursor.fetchall()
 
