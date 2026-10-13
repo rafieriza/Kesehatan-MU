@@ -59,7 +59,6 @@ def reset_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        # Mengosongkan isi tabel dan mereset ID auto increment ke 1
         cursor.execute("TRUNCATE TABLE artikel_kesehatan;")
         conn.commit()
         cursor.close()
@@ -83,7 +82,7 @@ def delete_article(article_id):
         if affected_rows > 0:
             return f"SUKSES: Artikel dengan ID {article_id} berhasil dihapus dari database!", 200
         else:
-            return f"INFO: Artikel dengan ID {article_id} tidak ditemukan (mungkin sudah terhapus).",  404
+            return f"INFO: Artikel dengan ID {article_id} tidak ditemukan (mungkin sudah terhapus).", 404
     except Exception as e:
         return f"GAGAL menghapus artikel: {str(e)}", 500
 
@@ -97,11 +96,9 @@ def admin_artikel():
         cursor = conn.cursor(dictionary=True)
         
         if search_query:
-            # Query pencarian jika admin memasukkan kata kunci
             sql = "SELECT id, title, source, published_at FROM artikel_kesehatan WHERE title LIKE %s OR source LIKE %s ORDER BY id DESC LIMIT 100"
             cursor.execute(sql, (f"%{search_query}%", f"%{search_query}%"))
         else:
-            # Default: Menampilkan 50 artikel terbaru
             cursor.execute("SELECT id, title, source, published_at FROM artikel_kesehatan ORDER BY id DESC LIMIT 50")
             
         articles = cursor.fetchall()
@@ -111,7 +108,6 @@ def admin_artikel():
         articles = []
         print(f"[Admin Error]: {e}")
 
-    # Tampilan HTML dengan Form Pencarian & Fitur Hapus
     html_content = f"""
     <!DOCTYPE html>
     <html lang="id">
@@ -147,7 +143,6 @@ def admin_artikel():
                 <p style="margin: 0; color: #666; font-size: 14px;">Cari artikel yang salah sasaran berdasarkan judul atau sumber, lalu klik tombol Hapus.</p>
             </div>
             
-            <!-- FORM PENCARIAN ADMIN -->
             <form action="/admin-artikel" method="GET" class="search-box">
                 <input type="text" name="q" value="{search_query}" placeholder="Cari judul / sumber..." class="search-input">
                 <button type="submit" class="btn-search">Cari</button>
@@ -196,7 +191,6 @@ def admin_artikel():
     """
     return html_content
 
-    
 @app.route('/init-db')
 def init_db():
     """Rute sekali pakai untuk membuat tabel database di Aiven MySQL"""
@@ -262,9 +256,7 @@ def get_synonyms_and_keywords(query):
             
     return list(set(matched_keywords))
 
-# Master kamus kategori dengan penambahan filter baru
 CATEGORY_MAP = {
-    # --- BARU: PENYAKIT MENULAR (Wabah, Infeksi, Virus, Bakteri) ---
     'penyakit_menular': [
         'vaksin', 'virus', 'infeksi', 'dbd', 'demam berdarah', 'mpox', 'covid', 'flu', 'demam', 
         'tbc', 'tuberculosis', 'cacar', 'tifus', 'tipes', 'malaria', 'hiv', 'aids', 'hepatitis', 
@@ -272,8 +264,6 @@ CATEGORY_MAP = {
         'endemi', 'menular', 'penularan', 'tertular', 'kusta', 'scabies', 'kudis', 'cacingan',
         'anthrax', 'flu burung', 'chikungunya', 'zoonosis', 'klaster'
     ],
-
-    # --- BARU: PENYAKIT TIDAK MENULAR / KRONIS ---
     'penyakit_kronis': [
         'kanker', 'tumor', 'diabetes', 'kencing manis', 'jantung', 'stroke', 'hipertensi', 
         'darah tinggi', 'kolesterol', 'asam urat', 'kista', 'miom', 'gagal ginjal', 'batu ginjal', 
@@ -281,38 +271,32 @@ CATEGORY_MAP = {
         'demensia', 'parkinson', 'epilepsi', 'amandel', 'sinusitis', 'varises', 'hernia', 
         'pembuluh darah', 'kronis'
     ],
-    
     'mental': [
         'depresi', 'stres', 'cemas', 'mental', 'jiwa', 'psikologi', 'ansietas', 'anxiety', 'trauma', 
         'skizofrenia', 'bipolar', 'autisme', 'adhd', 'panic attack', 'halusinasi', 'psikiater', 
         'psikolog', 'mental health', 'emosi', 'burnout', 'tekanan batin'
     ],
-    
     'gaya_hidup': [
         'olahraga', 'tidur', 'rokok', 'hidup', 'gigi', 'kulit', 'fitness', 'insomnia', 'jerawat', 
         'dermatitis', 'eksim', 'karies', 'plak gigi', 'gusi', 'aerobik', 'gym', 'jalan kaki', 
         'sepeda', 'vape', 'alkohol', 'begadang', 'gaya hidup', 'kebugaran', 'sedentari'
     ],
-    
     'nutrisi': [
         'diet', 'makanan', 'vitamin', 'gizi', 'nutrisi', 'buah', 'sayur', 'obesitas', 'kalori', 
         'kegemukan', 'karbohidrat', 'protein', 'lemak', 'serat', 'suplemen', 'hidrasi', 'air putih', 
         'stunting', 'kurang gizi', 'malnutrisi', 'gula darah', 'puasa'
     ],
-    
     'medis': [
         'rumah sakit', 'dokter', 'obat', 'operasi', 'medis', 'klinik', 'puskesmas', 
         'perawat', 'bidan', 'apotek', 'laboratorium', 'faskes', 'igd', 'icu', 'rawat inap', 
         'rawat jalan', 'rekam medis', 'rujukan', 'diagnosis', 'bedah', 'terapi', 'rehabilitasi', 
         'ambulan', 'screening', 'antibiotik', 'resep dokter', 'dosis'
     ],
-
     'ibu_anak': [
         'kehamilan', 'hamil', 'janin', 'kandungan', 'melahirkan', 'persalinan', 'nifas', 'asi', 
         'menyusui', 'kb', 'kontrasepsi', 'kespro', 'menstruasi', 'haid', 'pms', 'kesuburan', 
         'infertil', 'pcos', 'pediatri', 'tumbuh kembang', 'imunisasi', 'balita', 'bayi', 'anak'
     ],
-    
     'kebijakan_kesehatan': [
         'bpjs', 'kemenkes', 'menkes', 'jkn', 'kis', 'faskes 1', 'iuran', 'klaim rs', 'subsidi', 
         'regulasi', 'pemerintah', 'anggaran kesehatan', 'kebijakan medis'
@@ -338,8 +322,9 @@ def index():
         # 1. Jalankan Pembersihan Artikel Lama (>1 Tahun)
         cleanup_old_articles(cursor, conn)
 
-      # 2. Logika Query Utama & Smart Search (Judul, Summary, Sumber, & Tanggal Terbit)
+        # 2. Logika Query Utama & Smart Search / Kategori
         if query:
+            # Pencarian teks bebas (termasuk judul, summary, sumber, dan tanggal)
             cursor.execute("SELECT * FROM artikel_kesehatan")
             all_articles = cursor.fetchall()
             
@@ -351,7 +336,6 @@ def index():
                 title_text = art['title'] or ""
                 summary_text = art['summary'] or ""
                 source_text = art['source'] or ""
-                # Format tanggal terbit ke string agar bisa dicari (contoh: "12 Oct 2026", "2026-10-12")
                 published_str = art['published_at'].strftime('%d %b %Y %Y-%m-%d') if art.get('published_at') else ""
                 
                 title_lower = title_text.lower()
@@ -362,19 +346,16 @@ def index():
                 score = 0
                 matched = False
                 
-                # 1. Cek pencocokan langsung pada Sumber (Source) atau Tanggal (Published Date)
                 if q_lower in source_lower:
                     matched = True
-                    score = 120  # Prioritas sangat tinggi jika pengguna mencari nama sumber portal
+                    score = 120
                 elif q_lower in published_lower:
                     matched = True
-                    score = 110  # Prioritas tinggi jika mencari berdasarkan tanggal/bulan/tahun
-                # 2. Cek kecocokan pada Judul / Summary / Sinonim
+                    score = 110
                 elif any(kw in title_lower or kw in summary_lower for kw in search_keywords) or q_lower in title_lower or q_lower in summary_lower:
                     matched = True
                     score = 100 if q_lower in title_lower else 80
                 else:
-                    # 3. Fuzzy match per kata pada Judul dan Summary
                     all_words = (title_lower + " " + summary_lower).split()
                     max_word_score = 0
                     
@@ -394,15 +375,14 @@ def index():
                     art['search_score'] = score
                     filtered_articles.append(art)
             
-            # Urutkan berdasarkan skor relevansi tertinggi
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
-            # Query standar jika tidak sedang mencari (berdasarkan kategori & sorting)
+            # Query SQL standar untuk Home, Isu Terbaru, atau Kategori
             sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
             params = []
 
-            # Category Filtering Logic
+            # Category Filtering Logic menggunakan CATEGORY_MAP yang benar
             if category:
                 keywords = CATEGORY_MAP.get(category, [])
                 if keywords:
@@ -444,6 +424,7 @@ def index():
             cursor.execute(sql, tuple(params))
             articles = cursor.fetchall()
 
+        # Filter tambahan jika user melakukan pencarian teks di dalam kategori tertentu
         if query and category:
             cat_keywords = CATEGORY_MAP.get(category, [])
             articles = [art for art in articles if any(ck in f"{art['title']} {art['summary']}".lower() for ck in cat_keywords)]
@@ -451,6 +432,7 @@ def index():
         if query and sort_by == 'latest':
             articles = sorted(articles, key=lambda x: x.get('published_at', datetime.min), reverse=True)
 
+        # Isu Populer untuk Sidebar (SELALU DIEKSEKUSI AGAR SIDEBAR TIDAK HILANG)
         cursor.execute("SELECT * FROM artikel_kesehatan ORDER BY id DESC LIMIT 5")
         trending_articles = cursor.fetchall()
 
@@ -475,4 +457,3 @@ def index():
 
 if __name__ == '__main__':
     app.run(debug=True)
-    
