@@ -89,11 +89,21 @@ def delete_article(article_id):
 
 @app.route('/admin-artikel')
 def admin_artikel():
-    """Halaman panel admin sederhana untuk melihat dan menghapus artikel yang salah sasaran"""
+    """Halaman panel admin sederhana untuk melihat, mencari, dan menghapus artikel yang salah sasaran"""
+    search_query = request.args.get('q', '').strip()
+    
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, title, source, published_at FROM artikel_kesehatan ORDER BY id DESC LIMIT 50")
+        
+        if search_query:
+            # Query pencarian jika admin memasukkan kata kunci
+            sql = "SELECT id, title, source, published_at FROM artikel_kesehatan WHERE title LIKE %s OR source LIKE %s ORDER BY id DESC LIMIT 100"
+            cursor.execute(sql, (f"%{search_query}%", f"%{search_query}%"))
+        else:
+            # Default: Menampilkan 50 artikel terbaru
+            cursor.execute("SELECT id, title, source, published_at FROM artikel_kesehatan ORDER BY id DESC LIMIT 50")
+            
         articles = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -101,37 +111,58 @@ def admin_artikel():
         articles = []
         print(f"[Admin Error]: {e}")
 
-    # Tampilan HTML sederhana langsung dari Flask (tanpa repot ubah file template)
-    html_content = """
+    # Tampilan HTML dengan Form Pencarian & Fitur Hapus
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="id">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Panel Admin - Kesehatan-MU</title>
         <style>
-            body { font-family: Arial, sans-serif; background: #f4f6f8; padding: 20px; color: #333; }
-            h2 { color: #0d9488; }
-            table { width: 100%; border-collapse: collapse; background: white; margin-top: 15px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-            th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
-            th { background-color: #0d9488; color: white; }
-            tr:hover { background-color: #f9fafb; }
-            .btn-hapus { background-color: #ef4444; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px; }
-            .btn-hapus:hover { background-color: #dc2626; }
-            .back-link { display: inline-block; margin-bottom: 15px; color: #0d9488; text-decoration: none; font-weight: bold; }
+            body {{ font-family: Arial, sans-serif; background: #f4f6f8; padding: 20px; color: #333; }}
+            h2 {{ color: #0d9488; margin-top: 5px; }}
+            .header-container {{ display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }}
+            .search-box {{ display: flex; gap: 8px; }}
+            .search-input {{ padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; width: 250px; outline: none; }}
+            .search-input:focus {{ border-color: #0d9488; }}
+            .btn-search {{ background-color: #0d9488; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }}
+            .btn-search:hover {{ background-color: #0f766e; }}
+            .btn-reset {{ background-color: #6b7280; color: white; border: none; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px; }}
+            table {{ width: 100%; border-collapse: collapse; background: white; margin-top: 10px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+            th, td {{ padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }}
+            th {{ background-color: #0d9488; color: white; }}
+            tr:hover {{ background-color: #f9fafb; }}
+            .btn-hapus {{ background-color: #ef4444; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px; display: inline-block; }}
+            .btn-hapus:hover {{ background-color: #dc2626; }}
+            .back-link {{ display: inline-block; margin-bottom: 15px; color: #0d9488; text-decoration: none; font-weight: bold; }}
         </style>
     </head>
     <body>
         <a href="/" class="back-link">&larr; Kembali ke Beranda Kesehatan-MU</a>
-        <h2>Panel Moderasi Artikel (Hapus Artikel Nyasar)</h2>
-        <p>Klik tombol merah di samping artikel yang bukan kategori kesehatan untuk langsung menghapusnya.</p>
+        
+        <div class="header-container">
+            <div>
+                <h2>Panel Moderasi Artikel (Hapus Artikel Nyasar)</h2>
+                <p style="margin: 0; color: #666; font-size: 14px;">Cari artikel yang salah sasaran berdasarkan judul atau sumber, lalu klik tombol Hapus.</p>
+            </div>
+            
+            <!-- FORM PENCARIAN ADMIN -->
+            <form action="/admin-artikel" method="GET" class="search-box">
+                <input type="text" name="q" value="{search_query}" placeholder="Cari judul / sumber..." class="search-input">
+                <button type="submit" class="btn-search">Cari</button>
+                {"<a href='/admin-artikel' class='btn-reset'>Reset</a>" if search_query else ""}
+            </form>
+        </div>
+
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th style="width: 80px;">ID</th>
                     <th>Judul Artikel</th>
-                    <th>Sumber</th>
-                    <th>Tanggal Terbit</th>
-                    <th>Aksi</th>
+                    <th style="width: 160px;">Sumber</th>
+                    <th style="width: 180px;">Tanggal Terbit</th>
+                    <th style="width: 100px;">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -149,9 +180,11 @@ def admin_artikel():
                 </tr>
             """
     else:
-        html_content += """
+        html_content += f"""
                 <tr>
-                    <td colspan="5" style="text-align: center; color: #777;">Tidak ada artikel atau database gagal dimuat.</td>
+                    <td colspan="5" style="text-align: center; color: #777; padding: 20px;">
+                        {"Artikel dengan kata kunci '" + search_query + "' tidak ditemukan." if search_query else "Tidak ada artikel atau database gagal dimuat."}
+                    </td>
                 </tr>
         """
         
@@ -163,6 +196,7 @@ def admin_artikel():
     """
     return html_content
 
+    
 @app.route('/init-db')
 def init_db():
     """Rute sekali pakai untuk membuat tabel database di Aiven MySQL"""
@@ -304,7 +338,7 @@ def index():
         # 1. Jalankan Pembersihan Artikel Lama (>1 Tahun)
         cleanup_old_articles(cursor, conn)
 
-        # 2. Logika Query Utama & Smart Search dengan RapidFuzz + Pecah Kata
+      # 2. Logika Query Utama & Smart Search (Judul, Summary, Sumber, & Tanggal Terbit)
         if query:
             cursor.execute("SELECT * FROM artikel_kesehatan")
             all_articles = cursor.fetchall()
@@ -316,16 +350,31 @@ def index():
             for art in all_articles:
                 title_text = art['title'] or ""
                 summary_text = art['summary'] or ""
+                source_text = art['source'] or ""
+                # Format tanggal terbit ke string agar bisa dicari (contoh: "12 Oct 2026", "2026-10-12")
+                published_str = art['published_at'].strftime('%d %b %Y %Y-%m-%d') if art.get('published_at') else ""
+                
                 title_lower = title_text.lower()
                 summary_lower = summary_text.lower()
+                source_lower = source_text.lower()
+                published_lower = published_str.lower()
                 
                 score = 0
                 matched = False
                 
-                if any(kw in title_lower or kw in summary_lower for kw in search_keywords) or q_lower in title_lower or q_lower in summary_lower:
+                # 1. Cek pencocokan langsung pada Sumber (Source) atau Tanggal (Published Date)
+                if q_lower in source_lower:
+                    matched = True
+                    score = 120  # Prioritas sangat tinggi jika pengguna mencari nama sumber portal
+                elif q_lower in published_lower:
+                    matched = True
+                    score = 110  # Prioritas tinggi jika mencari berdasarkan tanggal/bulan/tahun
+                # 2. Cek kecocokan pada Judul / Summary / Sinonim
+                elif any(kw in title_lower or kw in summary_lower for kw in search_keywords) or q_lower in title_lower or q_lower in summary_lower:
                     matched = True
                     score = 100 if q_lower in title_lower else 80
                 else:
+                    # 3. Fuzzy match per kata pada Judul dan Summary
                     all_words = (title_lower + " " + summary_lower).split()
                     max_word_score = 0
                     
@@ -345,6 +394,7 @@ def index():
                     art['search_score'] = score
                     filtered_articles.append(art)
             
+            # Urutkan berdasarkan skor relevansi tertinggi
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
