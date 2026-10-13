@@ -308,6 +308,7 @@ CATEGORY_MAP = {
 def index():
     query = request.args.get('q', '').strip()
     category = request.args.get('category', '').strip()
+    region = request.args.get('region', '').strip() # Parameter baru untuk filter wilayah/internasional
     sort_by = request.args.get('sort', 'random').strip()
 
     articles = []
@@ -323,7 +324,7 @@ def index():
         # 1. Jalankan Pembersihan Artikel Lama (>1 Tahun)
         cleanup_old_articles(cursor, conn)
 
-        # 2. Logika Query Utama & Smart Search dengan RapidFuzz
+        # 2. Logika Query Utama & Smart Search
         if query:
             cursor.execute("SELECT * FROM artikel_kesehatan")
             all_articles = cursor.fetchall()
@@ -346,7 +347,6 @@ def index():
                 score = 0
                 matched = False
                 
-                # Pencarian berdasarkan Sumber / Tanggal / Judul / Summary / Fuzzy Match
                 if q_lower in source_lower:
                     matched = True
                     score = 120
@@ -379,11 +379,11 @@ def index():
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
-            # Query standar jika tidak sedang mencari (berdasarkan kategori & sorting)
+            # Query standar berdasarkan kategori, region (wilayah), atau sorting
             sql = "SELECT * FROM artikel_kesehatan WHERE 1=1"
             params = []
 
-            # Category Filtering Logic (Kembali ke struktur persis awal kamu yang bekerja)
+            # Category Filtering Logic
             if category:
                 keywords = CATEGORY_MAP.get(category, [])
                 if keywords:
@@ -391,6 +391,12 @@ def index():
                     sql += f" AND ({cat_conditions})"
                     for kw in keywords:
                         params.extend([f"%{kw}%", f"%{kw}%"])
+
+            # Region Filtering Logic (Internasional vs Lokal)
+            if region == 'international':
+                sql += " AND source IN ('ScienceDaily', 'Medical Xpress')"
+            elif region == 'local':
+                sql += " AND source NOT IN ('ScienceDaily', 'Medical Xpress')"
 
             # Tangkap nomor halaman untuk pagination
             try:
@@ -402,15 +408,11 @@ def index():
             per_page = 20
             offset = (page - 1) * per_page
 
-            # Hitung total artikel jika sort latest atau category
-            if sort_by == 'latest' or category:
+            # Hitung total artikel jika sort latest, kategori, atau region
+            if sort_by == 'latest' or category or region:
                 count_sql = "SELECT COUNT(*) as total FROM artikel_kesehatan WHERE 1=1"
                 count_params = list(params)
                 
-                # Jika kategori aktif, sertakan kriteria kategori ke penghitungan total
-                if category and keywords:
-                    count_sql += f" AND ({cat_conditions})"
-                    
                 cursor.execute(count_sql, tuple(count_params))
                 res_count = cursor.fetchone()
                 total_articles = res_count['total'] if res_count else 0
@@ -420,12 +422,14 @@ def index():
             # Sorting logic & Pagination
             if sort_by == 'trending':
                 sql += " ORDER BY id DESC LIMIT 10"
-            elif sort_by == 'latest' or category:
+            elif sort_by == 'latest' or category or region:
                 sql += " ORDER BY published_at DESC, id DESC LIMIT %s OFFSET %s"
                 params.extend([per_page, offset])
             else:
-                # Home Utama: Random dan KECUALIKAN ScienceDaily
-                sql += " AND source != 'ScienceDaily' ORDER BY RAND() LIMIT 20"
+                # Home Utama: Random dan KECUALIKAN ScienceDaily (jika tidak sedang di-filter region)
+                if not region:
+                    sql += " AND source != 'ScienceDaily'"
+                sql += " ORDER BY RAND() LIMIT 20"
 
             cursor.execute(sql, tuple(params))
             articles = cursor.fetchall()
@@ -454,6 +458,7 @@ def index():
         trending_articles=trending_articles,
         search_query=query,
         active_category=category,
+        region=region,
         sort_by=sort_by,
         db_connected=db_connected,
         current_page=page,
