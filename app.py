@@ -289,12 +289,13 @@ CATEGORY_MAP = {
 def index():
     query = request.args.get('q', '').strip()
     category = request.args.get('category', '').strip()
-    # Default sort diubah ke 'random' untuk halaman Home
     sort_by = request.args.get('sort', 'random').strip()
 
     articles = []
     trending_articles = []
     db_connected = True
+    page = 1
+    total_pages = 1
 
     try:
         conn = get_db_connection()
@@ -321,37 +322,29 @@ def index():
                 score = 0
                 matched = False
                 
-                # 1. Cek kecocokan langsung (Sinonim atau Substring di Judul/Summary)
                 if any(kw in title_lower or kw in summary_lower for kw in search_keywords) or q_lower in title_lower or q_lower in summary_lower:
                     matched = True
-                    # Beri skor tinggi jika kata ditemukan langsung di judul, lebih rendah jika di summary
                     score = 100 if q_lower in title_lower else 80
                 else:
-                    # 2. Cek Fuzzy per-kata dengan filter panjang huruf yang mirip (selisih maksimal 2 huruf)
                     all_words = (title_lower + " " + summary_lower).split()
                     max_word_score = 0
                     
                     for w in all_words:
-                        # Hanya bandingkan kata yang panjangnya mirip agar tidak meloloskan kata random
                         if abs(len(w) - len(q_lower)) <= 2:
                             s = fuzz.ratio(q_lower, w)
                             if s > max_word_score:
                                 max_word_score = s
                     
-                    # Ambang batas ketat (minimal 75 untuk word match)
                     if max_word_score >= 75:
                         matched = True
-                        # Cek apakah kecocokan typo ada di bagian Judul (berikan bonus nilai agar prioritas di atas)
                         title_words = title_lower.split()
                         in_title = any(abs(len(w) - len(q_lower)) <= 2 and fuzz.ratio(q_lower, w) >= 75 for w in title_words)
                         score = max_word_score + (30 if in_title else 0)
 
-                # Hanya masukkan artikel yang benar-benar 'matched'
                 if matched:
                     art['search_score'] = score
                     filtered_articles.append(art)
             
-            # Urutkan dari skor tertinggi (Paling akurat & diutamakan yang dari judul)
             filtered_articles = sorted(filtered_articles, key=lambda x: x.get('search_score', 0), reverse=True)
             articles = filtered_articles
         else:
@@ -368,29 +361,46 @@ def index():
                     for kw in keywords:
                         params.extend([f"%{kw}%", f"%{kw}%"])
 
-            # Sorting logic yang disesuaikan
+            # Tangkap nomor halaman untuk pagination
+            try:
+                page = int(request.args.get('page', 1))
+                if page < 1: page = 1
+            except ValueError:
+                page = 1
+                
+            per_page = 20
+            offset = (page - 1) * per_page
+
+            # Hitung total artikel jika sort latest atau kategori
+            if sort_by == 'latest' or category:
+                count_sql = "SELECT COUNT(*) as total FROM artikel_kesehatan WHERE 1=1"
+                count_params = list(params)
+                cursor.execute(count_sql, tuple(count_params))
+                res_count = cursor.fetchone()
+                total_articles = res_count['total'] if res_count else 0
+                total_pages = (total_articles + per_page - 1) // per_page
+                if total_pages < 1: total_pages = 1
+
+            # Sorting logic & Pagination
             if sort_by == 'trending':
                 sql += " ORDER BY id DESC LIMIT 10"
-            elif sort_by == 'latest'or category:
-                # Isu Terbaru ATAU saat sedang membuka Kategori: Berdasarkan urutan waktu masuk paling fresh
-                sql += " ORDER BY published_at DESC, id DESC LIMIT 20"
+            elif sort_by == 'latest' or category:
+                sql += " ORDER BY published_at DESC, id DESC LIMIT %s OFFSET %s"
+                params.extend([per_page, offset])
             else:
-                # Home Utama: Diambil secara acak (Random) dari database
-                sql += " ORDER BY RAND() LIMIT 20"
+                # Home Utama: Random dan KECUALIKAN ScienceDaily
+                sql += " AND source != 'ScienceDaily' ORDER BY RAND() LIMIT 20"
 
             cursor.execute(sql, tuple(params))
             articles = cursor.fetchall()
 
-        # Jika user melakukan pencarian dan sekaligus memilih kategori, filter lagi hasilnya
         if query and category:
             cat_keywords = CATEGORY_MAP.get(category, [])
             articles = [art for art in articles if any(ck in f"{art['title']} {art['summary']}".lower() for ck in cat_keywords)]
 
-        # Sorting manual khusus hasil pencarian gabungan
         if query and sort_by == 'latest':
             articles = sorted(articles, key=lambda x: x.get('published_at', datetime.min), reverse=True)
 
-        # Isu Populer untuk Sidebar
         cursor.execute("SELECT * FROM artikel_kesehatan ORDER BY id DESC LIMIT 5")
         trending_articles = cursor.fetchall()
 
@@ -408,7 +418,9 @@ def index():
         search_query=query,
         active_category=category,
         sort_by=sort_by,
-        db_connected=db_connected
+        db_connected=db_connected,
+        current_page=page,
+        total_pages=total_pages
     )
 
 if __name__ == '__main__':
