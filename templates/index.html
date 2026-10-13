@@ -45,12 +45,10 @@
                
                 <!-- DROPDOWN KATEGORI -->
                 <div class="relative group">
-                    <!-- TAMBAHKAN id="category-menu-btn" di sini -->
                     <button id="category-menu-btn" class="px-3 py-2 rounded hover:bg-teal-800 transition flex items-center space-x-1 w-full text-left md:text-center focus:outline-none">
                         <span>Kategori</span>
                         <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
                     </button>
-                    <!-- TAMBAHKAN id="category-dropdown-list" dan GANTI class-nya jadi support klik HP -->
                     <div id="category-dropdown-list" class="hidden md:group-hover:block absolute left-0 md:left-auto mt-1 w-52 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                         <a href="/?category=penyakit_menular" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🦠 Penyakit Menular</a>
                         <a href="/?category=penyakit_kronis" class="block px-4 py-2 text-xs hover:bg-teal-50 hover:text-teal-700 transition font-medium">🫀 Penyakit Kronis</a>
@@ -107,7 +105,7 @@
                             Artikel Kesehatan Pilihan
                         {% endif %}
                     </h2>
-                    {% if search_query or active_category or sort_by == 'trending' %}
+                    {% if search_query or active_category or sort_by == 'trending' or sort_by == 'latest' %}
                         <a href="/" class="text-xs text-teal-600 hover:underline font-semibold">Tampilkan Semua</a>
                     {% endif %}
                 </div>
@@ -146,7 +144,7 @@
                                             </a>
                                         </h3>
                                         
-                                        <!-- KONDISIONAL SUMMARY: Tampil jika ada isinya, skip bersih jika kosong -->
+                                        <!-- KONDISIONAL SUMMARY -->
                                         {% if article.summary and article.summary.strip() != "" %}
                                             <p class="text-gray-600 text-xs mb-3 line-clamp-2">
                                                 {{ article.summary }}
@@ -170,6 +168,41 @@
                             </div>
                         {% endfor %}
                     </div>
+
+                    <!-- PAGINATION / NAVIGASI HALAMAN -->
+                    {% if total_pages > 1 and sort_by != 'random' %}
+                    <div class="flex justify-center items-center gap-3 my-8">
+                        <!-- Tombol Sebelumnya -->
+                        {% if current_page > 1 %}
+                            <a href="?sort={{ sort_by }}&category={{ active_category }}&q={{ search_query }}&page={{ current_page - 1 }}" 
+                               class="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                                &larr; Sebelumnya
+                            </a>
+                        {% else %}
+                            <span class="bg-gray-200 text-gray-400 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed">
+                                &larr; Sebelumnya
+                            </span>
+                        {% endif %}
+
+                        <!-- Info Nomor Halaman -->
+                        <span class="text-sm font-semibold text-gray-700 px-2">
+                            Halaman {{ current_page }} dari {{ total_pages }}
+                        </span>
+
+                        <!-- Tombol Selanjutnya -->
+                        {% if current_page < total_pages %}
+                            <a href="?sort={{ sort_by }}&category={{ active_category }}&q={{ search_query }}&page={{ current_page + 1 }}" 
+                               class="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                                Selanjutnya &rarr;
+                            </a>
+                        {% else %}
+                            <span class="bg-gray-200 text-gray-400 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed">
+                                Selanjutnya &rarr;
+                            </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
                 {% else %}
                     <!-- UX: Halaman Empty State Pintar & Ramah Saat Pencarian Kosong -->
                     <div class="bg-white rounded-lg p-8 text-center shadow-sm border border-gray-200">
@@ -235,7 +268,7 @@
         </div>
     </main>
 
-    <!-- 5. FOOTER (Dengan Link Instagram @rafieriza) -->
+    <!-- 5. FOOTER -->
     <footer class="bg-slate-900 text-gray-400 py-4 px-4 text-center text-xs mt-auto">
         <p>&copy; 2026 Kesehatan-MU. Developed by 
             <a href="https://instagram.com/rafieriza_" target="_blank" rel="noopener noreferrer" class="text-teal-400 hover:text-teal-300 font-semibold hover:underline">
@@ -246,40 +279,34 @@
         <p class="text-[11px] text-gray-500 mt-0.5">Dikembangkan sebagai sistem aggregator isu kesehatan otomatis.</p>
     </footer>
 
-<!-- 6. POP-UP WELCOME MODAL -->
+    <!-- 6. POP-UP WELCOME MODAL -->
     <div id="welcome-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center transform transition-all scale-100 border border-gray-100">
-            <!-- Ikon / Logo -->
             <div class="w-16 h-16 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
                 <i class="fa-solid fa-heart-pulse text-3xl"></i>
             </div>
             
-            <!-- Judul Sambutan -->
             <h3 class="text-xl font-bold text-gray-900 mb-2">Selamat Datang di Kesehatan-MU!</h3>
             
-            <!-- Penjelasan Singkat Web -->
             <p class="text-gray-600 text-sm mb-6 leading-relaxed">
                 Platform aggregator pintar yang menyajikan ragam isu dan artikel kesehatan terkini dari berbagai sumber terpercaya secara otomatis, cepat, dan mudah diakses.
             </p>
             
-            <!-- Tombol Tutup / Mulai Jelajah -->
             <button id="close-modal-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-4 rounded-lg transition shadow-md text-sm">
                 Mulai Jelajahi Platform 🚀
             </button>
         </div>
     </div>
     
-<!-- 7. SCRIPT JAVASCRIPT -->
+    <!-- 7. SCRIPT JAVASCRIPT -->
     <script>
         const menuBtn = document.getElementById('menu-btn');
         const menuDropdown = document.getElementById('menu-dropdown');
 
-        // Toggle menu hamburger utama di HP
         menuBtn.addEventListener('click', () => {
             menuDropdown.classList.toggle('hidden');
         });
 
-        // Toggle dropdown kategori khusus klik di HP
         const categoryMenuBtn = document.getElementById('category-menu-btn');
         const categoryDropdownList = document.getElementById('category-dropdown-list');
 
@@ -288,28 +315,25 @@
             categoryDropdownList.classList.toggle('hidden');
         });
 
-        // Tutup dropdown kalau area luar diklik
         window.addEventListener('click', () => {
             if (!categoryDropdownList.classList.contains('hidden')) {
                 categoryDropdownList.classList.add('hidden');
             }
         });
-        // Logika Pop-up Welcome Modal
+
         const welcomeModal = document.getElementById('welcome-modal');
         const closeModalBtn = document.getElementById('close-modal-btn');
 
-        // Cek apakah user sudah pernah menutup modal sebelumnya
         if (localStorage.getItem('kesehatan_mu_welcomed') === 'true') {
             welcomeModal.style.display = 'none';
         }
-        // Fungsi button
+
         closeModalBtn.addEventListener('click', () => {
             welcomeModal.classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => {
                 welcomeModal.style.display = 'none';
             }, 300);
             
-            // Simpan status permanen ke localStorage browser
             localStorage.setItem('kesehatan_mu_welcomed', 'true');
         });
     </script>
