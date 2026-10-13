@@ -40,8 +40,8 @@
 
             <!-- Navigasi Menu (Sembunyi di HP, Buka via Hamburger Menu / Tampil di Desktop) -->
             <nav id="menu-dropdown" class="hidden w-full md:flex md:w-auto flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-1 font-medium text-sm pt-2 md:pt-0 border-t md:border-none border-teal-800">
-                <a href="/" class="px-3 py-2 rounded {% if not active_category and sort_by != 'trending' and not search_query %}bg-teal-800 text-white font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Home</a>
-                <a href="/?sort=latest" class="px-3 py-2 rounded {% if sort_by == 'latest' and not active_category and not search_query %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Isu Terbaru</a>
+                <a href="/" class="px-3 py-2 rounded {% if not active_category and not region and sort_by != 'trending' and not search_query %}bg-teal-800 text-white font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Home</a>
+                <a href="/?sort=latest" class="px-3 py-2 rounded {% if sort_by == 'latest' and not active_category and not region and not search_query %}bg-teal-800 font-semibold{% else %}hover:bg-teal-800 transition{% endif %}">Isu Terbaru</a>
                
                 <!-- DROPDOWN KATEGORI -->
                 <div class="relative group">
@@ -97,6 +97,10 @@
                             Hasil Pencarian: <span class="text-teal-700">"{{ search_query }}"</span>
                         {% elif active_category %}
                             Kategori: <span class="text-teal-700 capitalize">{{ active_category.replace('_', ' ') }}</span>
+                        {% elif region == 'international' %}
+                            🌐 Berita Kesehatan Internasional (Global)
+                        {% elif region == 'local' %}
+                            🇮🇩 Berita Kesehatan Lokal & Nasional
                         {% elif sort_by == 'trending' %}
                             Isu Kesehatan Trending
                         {% elif sort_by == 'latest' %}
@@ -105,14 +109,27 @@
                             Artikel Kesehatan Pilihan
                         {% endif %}
                     </h2>
-                    {% if search_query or active_category or sort_by == 'trending' or sort_by == 'latest' %}
+                    {% if search_query or active_category or region or sort_by == 'trending' or sort_by == 'latest' %}
                         <a href="/" class="text-xs text-teal-600 hover:underline font-semibold">Tampilkan Semua</a>
                     {% endif %}
                 </div>
             
+                <!-- PIL / TOMBOL FILTER WILAYAH (INTERNASIONAL & LOKAL) -->
+                <div class="flex items-center gap-2 mt-3 overflow-x-auto pb-1">
+                    <a href="/" class="px-3 py-1 rounded-full text-xs font-semibold transition {% if not region and not active_category and not search_query and sort_by == 'random' %}bg-teal-700 text-white shadow-sm{% else %}bg-white text-gray-700 border border-gray-300 hover:bg-gray-50{% endif %}">
+                        Semua Berita
+                    </a>
+                    <a href="/?region=international" class="px-3 py-1 rounded-full text-xs font-semibold transition {% if region == 'international' %}bg-teal-700 text-white shadow-sm{% else %}bg-white text-gray-700 border border-gray-300 hover:bg-gray-50{% endif %}">
+                        🌐 Internasional (ScienceDaily & Medical Xpress)
+                    </a>
+                    <a href="/?region=local" class="px-3 py-1 rounded-full text-xs font-semibold transition {% if region == 'local' %}bg-teal-700 text-white shadow-sm{% else %}bg-white text-gray-700 border border-gray-300 hover:bg-gray-50{% endif %}">
+                        🇮🇩 Lokal & Nasional
+                    </a>
+                </div>
+
                 <!-- Keterangan kecil khusus halaman kategori -->
                 {% if active_category %}
-                    <p class="text-xs text-gray-500 mt-1 italic">
+                    <p class="text-xs text-gray-500 mt-2 italic">
                         <i class="fa-solid fa-circle-info text-teal-600 mr-1"></i> 
                         Menampilkan artikel otomatis sistem kategori (sebagian artikel dapat muncul di beberapa kategori yang beririsan).
                     </p>
@@ -174,7 +191,7 @@
                     <div class="flex justify-center items-center gap-3 my-8">
                         <!-- Tombol Sebelumnya -->
                         {% if current_page > 1 %}
-                            <a href="?sort={{ sort_by }}&category={{ active_category }}&q={{ search_query }}&page={{ current_page - 1 }}" 
+                            <a href="?sort={{ sort_by }}&category={{ active_category }}&region={{ region }}&q={{ search_query }}&page={{ current_page - 1 }}" 
                                class="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
                                 &larr; Sebelumnya
                             </a>
@@ -191,7 +208,7 @@
 
                         <!-- Tombol Selanjutnya -->
                         {% if current_page < total_pages %}
-                            <a href="?sort={{ sort_by }}&category={{ active_category }}&q={{ search_query }}&page={{ current_page + 1 }}" 
+                            <a href="?sort={{ sort_by }}&category={{ active_category }}&region={{ region }}&q={{ search_query }}&page={{ current_page + 1 }}" 
                                class="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
                                 Selanjutnya &rarr;
                             </a>
